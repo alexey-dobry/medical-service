@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 	kafkago "github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
 )
@@ -19,12 +20,12 @@ type BatchMessage struct {
 // those concerns belong to each microservice.
 type Producer struct {
 	writer *kafkago.Writer
-	logger *zap.Logger
+	logger logger.Logger
 	cfg    ProducerConfig
 }
 
 // NewProducer constructs and validates a Producer from config.
-func NewProducer(cfg Config, logger *zap.Logger) (*Producer, error) {
+func NewProducer(cfg Config, logger logger.Logger) (*Producer, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidConfig, err)
 	}
@@ -38,10 +39,10 @@ func NewProducer(cfg Config, logger *zap.Logger) (*Producer, error) {
 		Async:                  cfg.Producer.Async,
 		AllowAutoTopicCreation: false, // topics must be explicitly created in production
 		Logger: kafkago.LoggerFunc(func(msg string, args ...interface{}) {
-			logger.Sugar().Debugf(msg, args...)
+			logger.Debugf(msg, args...)
 		}),
 		ErrorLogger: kafkago.LoggerFunc(func(msg string, args ...interface{}) {
-			logger.Sugar().Errorf(msg, args...)
+			logger.Errorf(msg, args...)
 		}),
 	}
 

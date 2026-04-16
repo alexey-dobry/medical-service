@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 	kafkago "github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
 )
@@ -21,12 +22,12 @@ type RawHandlerFunc func(ctx context.Context, msg *Message) error
 type Consumer struct {
 	reader   *kafkago.Reader
 	handlers map[EventType]HandlerFunc
-	logger   *zap.Logger
+	logger   logger.Logger
 	topic    string
 }
 
 // NewConsumer constructs a Consumer subscribed to a single topic.
-func NewConsumer(cfg Config, topic string, logger *zap.Logger) (*Consumer, error) {
+func NewConsumer(cfg Config, topic string, logger logger.Logger) (*Consumer, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalidConfig, err)
 	}
@@ -41,10 +42,10 @@ func NewConsumer(cfg Config, topic string, logger *zap.Logger) (*Consumer, error
 		CommitInterval: cfg.Consumer.CommitInterval,
 		StartOffset:    cfg.Consumer.StartOffset,
 		Logger: kafkago.LoggerFunc(func(msg string, args ...interface{}) {
-			logger.Sugar().Debugf(msg, args...)
+			logger.Debugf(msg, args...)
 		}),
 		ErrorLogger: kafkago.LoggerFunc(func(msg string, args ...interface{}) {
-			logger.Sugar().Errorf(msg, args...)
+			logger.Errorf(msg, args...)
 		}),
 	})
 
