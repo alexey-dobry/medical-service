@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package authpb;
+
+option go_package = "github.com/alexey-dobry/medical-service/internal/pkg/gen/auth/authpb";
+
+import "google/protobuf/empty.proto";
+
+service Auth {
+  rpc Register (RegisterRequest) returns (google.protobuf.Empty);
+}
+
+message RegisterRequest {
+  string user_id = 1;
+  string email = 2;
+  string password = 3;
+}
