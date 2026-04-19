@@ -6,6 +6,7 @@ import "github.com/alexey-dobry/medical-service/internal/pkg/validator"
 type Credentials struct {
 	UserID       string `validate:"required,uuid"`
 	Email        string `validate:"required,email"`
+	Role         Role   `validate:"required"`
 	PasswordHash string `validate:"required"`
 }
 
