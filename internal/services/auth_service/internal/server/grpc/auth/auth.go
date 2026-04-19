@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (s *ServerAPI) RegisterPatient(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
+func (s *GRPCServer) RegisterPatient(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
 	passwordHash, err := utils.HashPassword(req.Password)
 	if err != nil {
 		s.logger.Errorf("Failed to hash password: %s", err)
@@ -57,7 +57,7 @@ func (s *ServerAPI) RegisterPatient(ctx context.Context, req *pb.RegisterRequest
 	return &response, nil
 }
 
-func (s *ServerAPI) RegisterDoctor(ctx context.Context, req *pb.RegisterRequest) (*emptypb.Empty, error) {
+func (s *GRPCServer) RegisterDoctor(ctx context.Context, req *pb.RegisterRequest) (*emptypb.Empty, error) {
 	passwordHash, err := utils.HashPassword(req.Password)
 	if err != nil {
 		s.logger.Errorf("Failed to hash password: %s", err)
