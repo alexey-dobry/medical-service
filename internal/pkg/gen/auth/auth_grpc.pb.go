@@ -28,8 +28,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthClient interface {
-	RegisterPatient(ctx context.Context, in *RegisterPatientRequest, opts ...grpc.CallOption) (*RegisterPatientResponse, error)
-	RegisterDoctor(ctx context.Context, in *RegisterDoctorRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RegisterPatient(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
+	RegisterDoctor(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type authClient struct {
@@ -40,9 +40,9 @@ func NewAuthClient(cc grpc.ClientConnInterface) AuthClient {
 	return &authClient{cc}
 }
 
-func (c *authClient) RegisterPatient(ctx context.Context, in *RegisterPatientRequest, opts ...grpc.CallOption) (*RegisterPatientResponse, error) {
+func (c *authClient) RegisterPatient(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RegisterPatientResponse)
+	out := new(RegisterResponse)
 	err := c.cc.Invoke(ctx, Auth_RegisterPatient_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (c *authClient) RegisterPatient(ctx context.Context, in *RegisterPatientReq
 	return out, nil
 }
 
-func (c *authClient) RegisterDoctor(ctx context.Context, in *RegisterDoctorRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *authClient) RegisterDoctor(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Auth_RegisterDoctor_FullMethodName, in, out, cOpts...)
@@ -64,8 +64,8 @@ func (c *authClient) RegisterDoctor(ctx context.Context, in *RegisterDoctorReque
 // All implementations must embed UnimplementedAuthServer
 // for forward compatibility.
 type AuthServer interface {
-	RegisterPatient(context.Context, *RegisterPatientRequest) (*RegisterPatientResponse, error)
-	RegisterDoctor(context.Context, *RegisterDoctorRequest) (*emptypb.Empty, error)
+	RegisterPatient(context.Context, *RegisterRequest) (*RegisterResponse, error)
+	RegisterDoctor(context.Context, *RegisterRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedAuthServer()
 }
 
@@ -76,10 +76,10 @@ type AuthServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAuthServer struct{}
 
-func (UnimplementedAuthServer) RegisterPatient(context.Context, *RegisterPatientRequest) (*RegisterPatientResponse, error) {
+func (UnimplementedAuthServer) RegisterPatient(context.Context, *RegisterRequest) (*RegisterResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RegisterPatient not implemented")
 }
-func (UnimplementedAuthServer) RegisterDoctor(context.Context, *RegisterDoctorRequest) (*emptypb.Empty, error) {
+func (UnimplementedAuthServer) RegisterDoctor(context.Context, *RegisterRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RegisterDoctor not implemented")
 }
 func (UnimplementedAuthServer) mustEmbedUnimplementedAuthServer() {}
@@ -104,7 +104,7 @@ func RegisterAuthServer(s grpc.ServiceRegistrar, srv AuthServer) {
 }
 
 func _Auth_RegisterPatient_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterPatientRequest)
+	in := new(RegisterRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -116,13 +116,13 @@ func _Auth_RegisterPatient_Handler(srv interface{}, ctx context.Context, dec fun
 		FullMethod: Auth_RegisterPatient_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServer).RegisterPatient(ctx, req.(*RegisterPatientRequest))
+		return srv.(AuthServer).RegisterPatient(ctx, req.(*RegisterRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Auth_RegisterDoctor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterDoctorRequest)
+	in := new(RegisterRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func _Auth_RegisterDoctor_Handler(srv interface{}, ctx context.Context, dec func
 		FullMethod: Auth_RegisterDoctor_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServer).RegisterDoctor(ctx, req.(*RegisterDoctorRequest))
+		return srv.(AuthServer).RegisterDoctor(ctx, req.(*RegisterRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
