@@ -10,6 +10,12 @@ const (
 	DoctorRole  = "DOCTOR"
 )
 
+var RoleValue = map[string]Role{
+	"PATIENT": PatientRole,
+	"ADMIN":   AdminRole,
+	"DOCTOR":  DoctorRole,
+}
+
 // User is a model which stores data of user in a system
 type User struct {
 	FirstName  string    `validate:"required"`
