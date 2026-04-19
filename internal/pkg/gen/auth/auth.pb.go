@@ -22,28 +22,27 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type RegisterRequest struct {
+type RegisterPatientRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserData      *UserData              `protobuf:"bytes,1,opt,name=user_data,json=userData,proto3" json:"user_data,omitempty"`
-	DoctorData    *DoctorData            `protobuf:"bytes,2,opt,name=doctor_data,json=doctorData,proto3" json:"doctor_data,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RegisterRequest) Reset() {
-	*x = RegisterRequest{}
+func (x *RegisterPatientRequest) Reset() {
+	*x = RegisterPatientRequest{}
 	mi := &file_proto_auth_auth_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RegisterRequest) String() string {
+func (x *RegisterPatientRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RegisterRequest) ProtoMessage() {}
+func (*RegisterPatientRequest) ProtoMessage() {}
 
-func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
+func (x *RegisterPatientRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_auth_auth_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -55,19 +54,116 @@ func (x *RegisterRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RegisterRequest.ProtoReflect.Descriptor instead.
-func (*RegisterRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use RegisterPatientRequest.ProtoReflect.Descriptor instead.
+func (*RegisterPatientRequest) Descriptor() ([]byte, []int) {
 	return file_proto_auth_auth_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *RegisterRequest) GetUserData() *UserData {
+func (x *RegisterPatientRequest) GetUserData() *UserData {
 	if x != nil {
 		return x.UserData
 	}
 	return nil
 }
 
-func (x *RegisterRequest) GetDoctorData() *DoctorData {
+type RegisterPatientResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegisterPatientResponse) Reset() {
+	*x = RegisterPatientResponse{}
+	mi := &file_proto_auth_auth_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegisterPatientResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterPatientResponse) ProtoMessage() {}
+
+func (x *RegisterPatientResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_auth_auth_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterPatientResponse.ProtoReflect.Descriptor instead.
+func (*RegisterPatientResponse) Descriptor() ([]byte, []int) {
+	return file_proto_auth_auth_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *RegisterPatientResponse) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
+}
+
+func (x *RegisterPatientResponse) GetRefreshToken() string {
+	if x != nil {
+		return x.RefreshToken
+	}
+	return ""
+}
+
+type RegisterDoctorRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserData      *UserData              `protobuf:"bytes,1,opt,name=user_data,json=userData,proto3" json:"user_data,omitempty"`
+	DoctorData    *DoctorData            `protobuf:"bytes,2,opt,name=doctor_data,json=doctorData,proto3" json:"doctor_data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegisterDoctorRequest) Reset() {
+	*x = RegisterDoctorRequest{}
+	mi := &file_proto_auth_auth_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegisterDoctorRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterDoctorRequest) ProtoMessage() {}
+
+func (x *RegisterDoctorRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_auth_auth_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterDoctorRequest.ProtoReflect.Descriptor instead.
+func (*RegisterDoctorRequest) Descriptor() ([]byte, []int) {
+	return file_proto_auth_auth_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *RegisterDoctorRequest) GetUserData() *UserData {
+	if x != nil {
+		return x.UserData
+	}
+	return nil
+}
+
+func (x *RegisterDoctorRequest) GetDoctorData() *DoctorData {
 	if x != nil {
 		return x.DoctorData
 	}
@@ -90,7 +186,7 @@ type UserData struct {
 
 func (x *UserData) Reset() {
 	*x = UserData{}
-	mi := &file_proto_auth_auth_proto_msgTypes[1]
+	mi := &file_proto_auth_auth_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -102,7 +198,7 @@ func (x *UserData) String() string {
 func (*UserData) ProtoMessage() {}
 
 func (x *UserData) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_auth_proto_msgTypes[1]
+	mi := &file_proto_auth_auth_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -115,7 +211,7 @@ func (x *UserData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserData.ProtoReflect.Descriptor instead.
 func (*UserData) Descriptor() ([]byte, []int) {
-	return file_proto_auth_auth_proto_rawDescGZIP(), []int{1}
+	return file_proto_auth_auth_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *UserData) GetFirstName() string {
@@ -185,7 +281,7 @@ type DoctorData struct {
 
 func (x *DoctorData) Reset() {
 	*x = DoctorData{}
-	mi := &file_proto_auth_auth_proto_msgTypes[2]
+	mi := &file_proto_auth_auth_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -197,7 +293,7 @@ func (x *DoctorData) String() string {
 func (*DoctorData) ProtoMessage() {}
 
 func (x *DoctorData) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_auth_auth_proto_msgTypes[2]
+	mi := &file_proto_auth_auth_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -210,7 +306,7 @@ func (x *DoctorData) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DoctorData.ProtoReflect.Descriptor instead.
 func (*DoctorData) Descriptor() ([]byte, []int) {
-	return file_proto_auth_auth_proto_rawDescGZIP(), []int{2}
+	return file_proto_auth_auth_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *DoctorData) GetSpecialty() string {
@@ -238,8 +334,13 @@ var File_proto_auth_auth_proto protoreflect.FileDescriptor
 
 const file_proto_auth_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x15proto/auth/auth.proto\x12\x06authpb\x1a\x1bgoogle/protobuf/empty.proto\"u\n" +
-	"\x0fRegisterRequest\x12-\n" +
+	"\x15proto/auth/auth.proto\x12\x06authpb\x1a\x1bgoogle/protobuf/empty.proto\"G\n" +
+	"\x16RegisterPatientRequest\x12-\n" +
+	"\tuser_data\x18\x01 \x01(\v2\x10.authpb.UserDataR\buserData\"a\n" +
+	"\x17RegisterPatientResponse\x12!\n" +
+	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
+	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\"{\n" +
+	"\x15RegisterDoctorRequest\x12-\n" +
 	"\tuser_data\x18\x01 \x01(\v2\x10.authpb.UserDataR\buserData\x123\n" +
 	"\vdoctor_data\x18\x02 \x01(\v2\x12.authpb.DoctorDataR\n" +
 	"doctorData\"\xe0\x01\n" +
@@ -259,9 +360,10 @@ const file_proto_auth_auth_proto_rawDesc = "" +
 	"DoctorData\x12\x1c\n" +
 	"\tspecialty\x18\x01 \x01(\tR\tspecialty\x12'\n" +
 	"\x0fwork_experience\x18\x02 \x01(\tR\x0eworkExperience\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription2I\n" +
-	"\x04Auth\x12A\n" +
-	"\x0eRegisterDoctor\x12\x17.authpb.RegisterRequest\x1a\x16.google.protobuf.EmptyBFZDgithub.com/alexey-dobry/medical-service/internal/pkg/gen/auth/authpbb\x06proto3"
+	"\vdescription\x18\x03 \x01(\tR\vdescription2\xa3\x01\n" +
+	"\x04Auth\x12R\n" +
+	"\x0fRegisterPatient\x12\x1e.authpb.RegisterPatientRequest\x1a\x1f.authpb.RegisterPatientResponse\x12G\n" +
+	"\x0eRegisterDoctor\x12\x1d.authpb.RegisterDoctorRequest\x1a\x16.google.protobuf.EmptyBFZDgithub.com/alexey-dobry/medical-service/internal/pkg/gen/auth/authpbb\x06proto3"
 
 var (
 	file_proto_auth_auth_proto_rawDescOnce sync.Once
@@ -275,23 +377,28 @@ func file_proto_auth_auth_proto_rawDescGZIP() []byte {
 	return file_proto_auth_auth_proto_rawDescData
 }
 
-var file_proto_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_proto_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_proto_auth_auth_proto_goTypes = []any{
-	(*RegisterRequest)(nil), // 0: authpb.RegisterRequest
-	(*UserData)(nil),        // 1: authpb.UserData
-	(*DoctorData)(nil),      // 2: authpb.DoctorData
-	(*emptypb.Empty)(nil),   // 3: google.protobuf.Empty
+	(*RegisterPatientRequest)(nil),  // 0: authpb.RegisterPatientRequest
+	(*RegisterPatientResponse)(nil), // 1: authpb.RegisterPatientResponse
+	(*RegisterDoctorRequest)(nil),   // 2: authpb.RegisterDoctorRequest
+	(*UserData)(nil),                // 3: authpb.UserData
+	(*DoctorData)(nil),              // 4: authpb.DoctorData
+	(*emptypb.Empty)(nil),           // 5: google.protobuf.Empty
 }
 var file_proto_auth_auth_proto_depIdxs = []int32{
-	1, // 0: authpb.RegisterRequest.user_data:type_name -> authpb.UserData
-	2, // 1: authpb.RegisterRequest.doctor_data:type_name -> authpb.DoctorData
-	0, // 2: authpb.Auth.RegisterDoctor:input_type -> authpb.RegisterRequest
-	3, // 3: authpb.Auth.RegisterDoctor:output_type -> google.protobuf.Empty
-	3, // [3:4] is the sub-list for method output_type
-	2, // [2:3] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 0: authpb.RegisterPatientRequest.user_data:type_name -> authpb.UserData
+	3, // 1: authpb.RegisterDoctorRequest.user_data:type_name -> authpb.UserData
+	4, // 2: authpb.RegisterDoctorRequest.doctor_data:type_name -> authpb.DoctorData
+	0, // 3: authpb.Auth.RegisterPatient:input_type -> authpb.RegisterPatientRequest
+	2, // 4: authpb.Auth.RegisterDoctor:input_type -> authpb.RegisterDoctorRequest
+	1, // 5: authpb.Auth.RegisterPatient:output_type -> authpb.RegisterPatientResponse
+	5, // 6: authpb.Auth.RegisterDoctor:output_type -> google.protobuf.Empty
+	5, // [5:7] is the sub-list for method output_type
+	3, // [3:5] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_proto_auth_auth_proto_init() }
@@ -305,7 +412,7 @@ func file_proto_auth_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_auth_auth_proto_rawDesc), len(file_proto_auth_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

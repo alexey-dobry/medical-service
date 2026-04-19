@@ -7,10 +7,20 @@ option go_package = "github.com/alexey-dobry/medical-service/internal/pkg/gen/au
 import "google/protobuf/empty.proto";
 
 service Auth {
-  rpc RegisterDoctor (RegisterRequest) returns (google.protobuf.Empty);
+  rpc RegisterPatient (RegisterPatientRequest) returns (RegisterPatientResponse);
+  rpc RegisterDoctor (RegisterDoctorRequest) returns (google.protobuf.Empty);
 }
 
-message RegisterRequest {
+message RegisterPatientRequest {
+  UserData user_data = 1;
+}
+
+message RegisterPatientResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+
+message RegisterDoctorRequest {
   UserData user_data = 1;
   DoctorData doctor_data = 2;
 }
