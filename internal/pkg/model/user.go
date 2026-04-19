@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/alexey-dobry/medical-service/internal/pkg/validator"
+)
 
 type Role string
 
@@ -26,4 +30,8 @@ type User struct {
 	Sex        string    `validate:"required"`
 	Role       Role      `validate:"required"`
 	BirthDate  time.Time `validate:"required"`
+}
+
+func (u *User) Validate() error {
+	return validator.V.Struct(u)
 }

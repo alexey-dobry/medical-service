@@ -1,5 +1,7 @@
 package model
 
+import "github.com/alexey-dobry/medical-service/internal/pkg/validator"
+
 type EntryType string
 
 const (
@@ -13,4 +15,8 @@ type MedicalEntry struct {
 	UserID      string    `validate:"required,uuid"`
 	Type        EntryType `validate:"required"`
 	Description string    `validate:"required,max=500"`
+}
+
+func (m *MedicalEntry) Validate() error {
+	return validator.V.Struct(m)
 }
