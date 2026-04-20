@@ -40,8 +40,8 @@ func New(cfg config.Config) App {
 
 	a.logger = zap.NewLogger(cfg.Logger).WithFields("layer", "app")
 
-	a.GRPCServerAddress = fmt.Sprintf(":%s", cfg.GRPC.Port)
-	a.RESTServerAddress = fmt.Sprintf(":%s", cfg.REST.Port)
+	a.GRPCServerAddress = fmt.Sprintf(":%d", cfg.GRPC.Port)
+	a.RESTServerAddress = fmt.Sprintf(":%d", cfg.REST.Port)
 
 	a.store, err = store.New(a.logger, cfg.Store)
 	if err != nil {

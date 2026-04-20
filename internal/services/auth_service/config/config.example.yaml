@@ -1,0 +1,31 @@
+logger:
+  dir: ./logs
+  log_targets:
+
+grpc:
+  port: 50051
+
+rest:
+  port: 8080
+  read_timeout: "4min"
+  write_timeout: "4min"
+  idle_timeout: "4min"
+
+store:
+  pg_config:
+    port: 5432
+    host: auth-postgres
+    user: pq_user
+    password: superpass
+    database: postgres
+  rd_config:
+    port: 5431
+    host: auth-redis
+    user: default
+    password: 1
+    database: 1
+
+jwt:
+  ttl:
+    access-ttl: "2h"
+    refresh-ttl: "24h"
