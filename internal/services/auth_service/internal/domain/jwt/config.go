@@ -1,8 +1,8 @@
 package jwt
 
 type Config struct {
-	AccessSecret  string `validate:"required" yaml:"access-secret"`
-	RefreshSecret string `validate:"required" yaml:"refresh-secret"`
+	AccessSecret  string `validate:"required"`
+	RefreshSecret string `validate:"required"`
 	TTL           TTL    `validate:"required" yaml:"ttl"`
 }
 

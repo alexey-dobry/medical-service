@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func NewGRPCServer(logger logger.Logger, repository store.CredentialsRepository, jwtHandler jwt.JWTHandler) *grpc.Server {
+func New(logger logger.Logger, repository store.CredentialsRepository, jwtHandler jwt.JWTHandler) *grpc.Server {
 	s := grpc.NewServer()
 
 	authrpc.RegisterAuthServer(s, auth.New(logger, repository, jwtHandler))

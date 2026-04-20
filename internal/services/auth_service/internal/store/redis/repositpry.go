@@ -13,7 +13,7 @@ type BlacklistRepository struct {
 }
 
 func New(logger logger.Logger, cfg Config) (*BlacklistRepository, error) {
-	redisDSN := fmt.Sprintf("redis://%s:%s@%s:%s/%d",
+	redisDSN := fmt.Sprintf("redis://%s:%s@%s:%d/%s",
 		cfg.User,
 		cfg.Password,
 		cfg.Host,

@@ -1,6 +1,8 @@
 package rest
 
 import (
+	"net"
+
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/jwt"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/store"
@@ -33,4 +35,8 @@ func New(logger logger.Logger, store store.Store, jwtHandler jwt.JWTHandler, cfg
 	s.initRoutes()
 
 	return s
+}
+
+func (s *RESTServer) Listener(listener net.Listener) error {
+	return s.fiberApp.Listener(listener)
 }
