@@ -9,6 +9,7 @@ import "google/protobuf/empty.proto";
 service Auth {
   rpc RegisterPatient (RegisterRequest) returns (RegisterResponse);
   rpc RegisterDoctor (RegisterRequest) returns (google.protobuf.Empty);
+  rpc DeleteUser (DeleteUserRequest) returns (google.protobuf.Empty);
 }
 
 message RegisterRequest {
@@ -21,4 +22,8 @@ message RegisterRequest {
 message RegisterResponse {
   string access_token = 1;
   string refresh_token = 2;
+}
+
+message DeleteUserRequest {
+  string user_id = 1;
 }

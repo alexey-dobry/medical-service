@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	Auth_RegisterPatient_FullMethodName = "/authpb.Auth/RegisterPatient"
 	Auth_RegisterDoctor_FullMethodName  = "/authpb.Auth/RegisterDoctor"
+	Auth_DeleteUser_FullMethodName      = "/authpb.Auth/DeleteUser"
 )
 
 // AuthClient is the client API for Auth service.
@@ -30,6 +31,7 @@ const (
 type AuthClient interface {
 	RegisterPatient(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	RegisterDoctor(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type authClient struct {
@@ -60,12 +62,23 @@ func (c *authClient) RegisterDoctor(ctx context.Context, in *RegisterRequest, op
 	return out, nil
 }
 
+func (c *authClient) DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Auth_DeleteUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServer is the server API for Auth service.
 // All implementations must embed UnimplementedAuthServer
 // for forward compatibility.
 type AuthServer interface {
 	RegisterPatient(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	RegisterDoctor(context.Context, *RegisterRequest) (*emptypb.Empty, error)
+	DeleteUser(context.Context, *DeleteUserRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedAuthServer()
 }
 
@@ -81,6 +94,9 @@ func (UnimplementedAuthServer) RegisterPatient(context.Context, *RegisterRequest
 }
 func (UnimplementedAuthServer) RegisterDoctor(context.Context, *RegisterRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RegisterDoctor not implemented")
+}
+func (UnimplementedAuthServer) DeleteUser(context.Context, *DeleteUserRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteUser not implemented")
 }
 func (UnimplementedAuthServer) mustEmbedUnimplementedAuthServer() {}
 func (UnimplementedAuthServer) testEmbeddedByValue()              {}
@@ -139,6 +155,24 @@ func _Auth_RegisterDoctor_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Auth_DeleteUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServer).DeleteUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auth_DeleteUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServer).DeleteUser(ctx, req.(*DeleteUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Auth_ServiceDesc is the grpc.ServiceDesc for Auth service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -153,6 +187,10 @@ var Auth_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterDoctor",
 			Handler:    _Auth_RegisterDoctor_Handler,
+		},
+		{
+			MethodName: "DeleteUser",
+			Handler:    _Auth_DeleteUser_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
