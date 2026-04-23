@@ -8,6 +8,7 @@ import (
 	"github.com/alexey-dobry/medical-service/internal/pkg/model"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/jwt"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/utils"
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"google.golang.org/grpc/codes"
@@ -79,6 +80,20 @@ func (s *GRPCServer) RegisterDoctor(ctx context.Context, req *pb.RegisterRequest
 		return nil, status.Error(codes.AlreadyExists, "Account with specified email already exists")
 	} else if err != nil {
 		s.logger.Errorf("Failed to add new user to data: %s", err)
+		return nil, status.Error(codes.Internal, "Internal server error")
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (s *GRPCServer) DeleteUser(ctx context.Context, req *pb.DeleteUserRequest) (*emptypb.Empty, error) {
+	userID, err := uuid.Parse(req.UserId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Internal server error")
+	}
+
+	err = s.repository.Delete(userID)
+	if err != nil {
 		return nil, status.Error(codes.Internal, "Internal server error")
 	}
 

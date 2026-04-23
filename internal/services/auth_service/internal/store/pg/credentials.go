@@ -13,7 +13,11 @@ func (cr *CredentialsRepository) Add(credentials model.Credentials) error {
 		credentials.PasswordHash,
 		credentials.Role,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (cr *CredentialsRepository) GetOneByMail(email string) (model.Credentials, error) {
@@ -38,4 +42,13 @@ func (cr *CredentialsRepository) GetOneByID(ID uuid.UUID) (model.Credentials, er
 	}
 
 	return c, nil
+}
+
+func (cr *CredentialsRepository) Delete(ID uuid.UUID) error {
+	_, err := cr.db.Exec("DELETE FROM credentials WHERE user_id = $1", ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

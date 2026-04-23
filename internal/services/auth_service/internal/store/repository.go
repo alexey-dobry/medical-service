@@ -14,6 +14,8 @@ type CredentialsRepository interface {
 
 	GetOneByID(userID uuid.UUID) (model.Credentials, error)
 
+	Delete(ID uuid.UUID) error
+
 	Close() error
 }
 
