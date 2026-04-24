@@ -14,3 +14,12 @@ type DoctorAdditionalData struct {
 func (d *DoctorAdditionalData) Validate() error {
 	return validator.V.Struct(d)
 }
+
+type DoctorSearchParams struct {
+	FirstName  string
+	MiddleName string
+	LastName   string
+	Sex        string
+	Specialty  string
+	Service    string
+}
