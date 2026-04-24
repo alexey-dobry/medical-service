@@ -16,6 +16,7 @@ func (d *DoctorAdditionalData) Validate() error {
 }
 
 type DoctorSearchParams struct {
+	ID         string
 	FirstName  string
 	MiddleName string
 	LastName   string
