@@ -1,7 +1,7 @@
 package user
 
 import (
-	"github.com/alexey-dobry/medical-service/internal/pkg/model"
+	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model"
 	"github.com/google/uuid"
 )
 

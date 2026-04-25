@@ -3,8 +3,7 @@ package store
 import (
 	"io"
 
-	"github.com/alexey-dobry/medical-service/internal/pkg/model"
-	intModel "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model"
+	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model"
 	"github.com/google/uuid"
 )
 
@@ -21,9 +20,9 @@ type UserRepository interface {
 }
 
 type MetaRepository interface {
-	Create(photo intModel.Photo) error
+	Create(photo model.Photo) error
 
-	GetByID(ID string) (intModel.Photo, error)
+	GetByID(ID string) (model.Photo, error)
 
 	Delete(ID string) error
 
@@ -45,5 +44,5 @@ type PhotosRepository interface {
 
 	Delete(key string) error
 
-	Stat(key string) (*intModel.StorageObjectInfo, error)
+	Stat(key string) (model.StorageObjectInfo, error)
 }

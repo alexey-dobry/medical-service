@@ -3,7 +3,7 @@ module github.com/alexey-dobry/medical-service/internal/services/user_service
 go 1.26.2
 
 require (
-	github.com/alexey-dobry/medical-service/internal/pkg v0.0.0-20260424091048-9d3e9d191e03 // indirect
+	github.com/alexey-dobry/medical-service/internal/pkg v0.0.0-20260425064047-bf3b45dbc94d // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect

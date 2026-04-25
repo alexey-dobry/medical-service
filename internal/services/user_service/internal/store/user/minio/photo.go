@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	intModel "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model" // Костыль, исправить
+	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model"
 	"github.com/minio/minio-go/v7"
 )
 
@@ -42,8 +42,6 @@ func (r *Repository) Get(key string) (io.ReadCloser, error) {
 		return nil, err
 	}
 
-	// ВАЖНО: первая операция чтения нужна,
-	// чтобы MinIO реально выполнил запрос
 	if _, err := obj.Stat(); err != nil {
 		_ = obj.Close()
 		return nil, err
@@ -61,7 +59,7 @@ func (r *Repository) Delete(key string) error {
 	)
 }
 
-func (r *Repository) Stat(key string) (*intModel.StorageObjectInfo, error) {
+func (r *Repository) Stat(key string) (model.StorageObjectInfo, error) {
 	info, err := r.db.StatObject(
 		context.Background(),
 		r.bucket,
@@ -69,10 +67,10 @@ func (r *Repository) Stat(key string) (*intModel.StorageObjectInfo, error) {
 		minio.StatObjectOptions{},
 	)
 	if err != nil {
-		return nil, err
+		return model.StorageObjectInfo{}, err
 	}
 
-	return &intModel.StorageObjectInfo{
+	return model.StorageObjectInfo{
 		Size:         info.Size,
 		ContentType:  info.ContentType,
 		LastModified: info.LastModified,
