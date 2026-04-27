@@ -19,7 +19,7 @@ func (r *Repository) AddDoctor(doctorData model.DoctorSearchParams) error {
 		"last_name":   doctorData.LastName,
 		"sex":         doctorData.Sex,
 		"specialty":   doctorData.Specialty,
-		"service":     doctorData.Service,
+		"services":    doctorData.Services,
 	}
 
 	body, err := json.Marshal(doc)
@@ -44,6 +44,34 @@ func (r *Repository) AddDoctor(doctorData model.DoctorSearchParams) error {
 	}
 
 	return nil
+}
+
+func (r *Repository) DeleteDoctor(ID uuid.UUID) error {
+	if strings.TrimSpace(ID.String()) == "" {
+		return fmt.Errorf("deleteDoctor: id must not be empty")
+	}
+
+	res, err := r.db.Delete(
+		"doctors",
+		ID.String(),
+		r.db.Delete.WithContext(context.Background()),
+		r.db.Delete.WithRefresh("true"),
+	)
+	if err != nil {
+		return fmt.Errorf("deleteDoctor: delete request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode == 404 {
+		return fmt.Errorf("deleteDoctor: document with id %q not found", ID.String())
+	}
+
+	if res.IsError() {
+		return fmt.Errorf("deleteDoctor: elasticsearch error [%s]", res.Status())
+	}
+
+	return nil
+
 }
 
 func (r *Repository) SearchDoctor(searchParams model.DoctorSearchParams) (uuid.UUID, error) {
@@ -125,7 +153,19 @@ func buildSearchQuery(p model.DoctorSearchParams) map[string]interface{} {
 	addMatch("middle_name", p.MiddleName)
 	addMatch("last_name", p.LastName)
 	addMatch("specialty", p.Specialty)
-	addMatch("service", p.Service)
+
+	for _, svc := range p.Services {
+		if strings.TrimSpace(svc) != "" {
+			should = append(should, map[string]interface{}{
+				"match": map[string]interface{}{
+					"services": map[string]interface{}{
+						"query":     svc,
+						"fuzziness": "AUTO",
+					},
+				},
+			})
+		}
+	}
 
 	if len(should) == 0 {
 		return map[string]interface{}{

@@ -16,6 +16,8 @@ type UserRepository interface {
 
 	GetDoctor(ID uuid.UUID) (model.User, model.DoctorAdditionalData, error)
 
+	DeleteUser(ID uuid.UUID) error
+
 	Close() error
 }
 
@@ -33,6 +35,8 @@ type SearchRepository interface {
 	AddDoctor(doctorData model.DoctorSearchParams) error
 
 	SearchDoctor(searchParams model.DoctorSearchParams) (uuid.UUID, error)
+
+	DeleteDoctor(ID uuid.UUID) error
 
 	Close() error
 }

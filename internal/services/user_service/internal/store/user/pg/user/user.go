@@ -30,3 +30,12 @@ func (r *Repository) GetPatient(ID uuid.UUID) (model.User, error) {
 
 	return u, nil
 }
+
+func (r *Repository) DeleteUser(ID uuid.UUID) error {
+	_, err := r.db.Exec("DELETE FROM user WHERE id = $1", ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
