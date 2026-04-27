@@ -1,6 +1,9 @@
 package meta
 
-import "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model"
+import (
+	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model"
+	"github.com/google/uuid"
+)
 
 func (r *Repository) Create(photo model.Photo) error {
 	_, err := r.db.Exec(
@@ -16,7 +19,7 @@ func (r *Repository) Create(photo model.Photo) error {
 	return err
 }
 
-func (r *Repository) GetByID(ID string) (model.Photo, error) {
+func (r *Repository) GetByID(ID uuid.UUID) (model.Photo, error) {
 	row := r.db.QueryRow("SELECT id,name,mime_type,size,user_id,storage_key FROM meta WHERE id = $1", ID)
 
 	var p model.Photo
@@ -28,11 +31,12 @@ func (r *Repository) GetByID(ID string) (model.Photo, error) {
 	return p, nil
 }
 
-func (r *Repository) Delete(ID string) error {
-	_, err := r.db.Exec("DELETE FROM meta WHERE user_id = $1", ID)
+func (r *Repository) Delete(ID uuid.UUID) (string, error) {
+	var key string
+	err := r.db.QueryRow("DELETE FROM meta WHERE user_id = $1 RETURNING storage_key", ID).Scan(key)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return key, nil
 }

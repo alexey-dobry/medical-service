@@ -24,9 +24,9 @@ type UserRepository interface {
 type MetaRepository interface {
 	Create(photo model.Photo) error
 
-	GetByID(ID string) (model.Photo, error)
+	GetByID(ID uuid.UUID) (model.Photo, error)
 
-	Delete(ID string) error
+	Delete(ID uuid.UUID) (string, error)
 
 	Close() error
 }

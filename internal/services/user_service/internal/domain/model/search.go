@@ -33,7 +33,7 @@ var DoctorsIndexMapping = map[string]interface{}{
 					"keyword": map[string]interface{}{"type": "keyword"},
 				},
 			},
-			"service": map[string]interface{}{
+			"services": map[string]interface{}{
 				"type": "text",
 				"fields": map[string]interface{}{
 					"keyword": map[string]interface{}{"type": "keyword"},
