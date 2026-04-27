@@ -22,6 +22,66 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type ProfilePicture struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
+	Content       []byte                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"` // файл целиком
+	MimeType      string                 `protobuf:"bytes,5,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProfilePicture) Reset() {
+	*x = ProfilePicture{}
+	mi := &file_proto_user_user_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProfilePicture) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProfilePicture) ProtoMessage() {}
+
+func (x *ProfilePicture) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_user_user_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProfilePicture.ProtoReflect.Descriptor instead.
+func (*ProfilePicture) Descriptor() ([]byte, []int) {
+	return file_proto_user_user_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ProfilePicture) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *ProfilePicture) GetContent() []byte {
+	if x != nil {
+		return x.Content
+	}
+	return nil
+}
+
+func (x *ProfilePicture) GetMimeType() string {
+	if x != nil {
+		return x.MimeType
+	}
+	return ""
+}
+
 type CreateDoctorRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	FirstName      string                 `protobuf:"bytes,1,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
@@ -34,13 +94,15 @@ type CreateDoctorRequest struct {
 	Specialty      string                 `protobuf:"bytes,8,opt,name=specialty,proto3" json:"specialty,omitempty"`
 	WorkExperience string                 `protobuf:"bytes,9,opt,name=work_experience,json=workExperience,proto3" json:"work_experience,omitempty"`
 	Description    string                 `protobuf:"bytes,10,opt,name=description,proto3" json:"description,omitempty"`
+	Services       []string               `protobuf:"bytes,11,rep,name=services,proto3" json:"services,omitempty"`
+	ProfilePicture *ProfilePicture        `protobuf:"bytes,12,opt,name=profile_picture,json=profilePicture,proto3" json:"profile_picture,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CreateDoctorRequest) Reset() {
 	*x = CreateDoctorRequest{}
-	mi := &file_proto_user_user_proto_msgTypes[0]
+	mi := &file_proto_user_user_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -52,7 +114,7 @@ func (x *CreateDoctorRequest) String() string {
 func (*CreateDoctorRequest) ProtoMessage() {}
 
 func (x *CreateDoctorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[0]
+	mi := &file_proto_user_user_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -65,7 +127,7 @@ func (x *CreateDoctorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateDoctorRequest.ProtoReflect.Descriptor instead.
 func (*CreateDoctorRequest) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{0}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *CreateDoctorRequest) GetFirstName() string {
@@ -138,6 +200,20 @@ func (x *CreateDoctorRequest) GetDescription() string {
 	return ""
 }
 
+func (x *CreateDoctorRequest) GetServices() []string {
+	if x != nil {
+		return x.Services
+	}
+	return nil
+}
+
+func (x *CreateDoctorRequest) GetProfilePicture() *ProfilePicture {
+	if x != nil {
+		return x.ProfilePicture
+	}
+	return nil
+}
+
 type DeleteDoctorRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -147,7 +223,7 @@ type DeleteDoctorRequest struct {
 
 func (x *DeleteDoctorRequest) Reset() {
 	*x = DeleteDoctorRequest{}
-	mi := &file_proto_user_user_proto_msgTypes[1]
+	mi := &file_proto_user_user_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -159,7 +235,7 @@ func (x *DeleteDoctorRequest) String() string {
 func (*DeleteDoctorRequest) ProtoMessage() {}
 
 func (x *DeleteDoctorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_user_user_proto_msgTypes[1]
+	mi := &file_proto_user_user_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -172,7 +248,7 @@ func (x *DeleteDoctorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteDoctorRequest.ProtoReflect.Descriptor instead.
 func (*DeleteDoctorRequest) Descriptor() ([]byte, []int) {
-	return file_proto_user_user_proto_rawDescGZIP(), []int{1}
+	return file_proto_user_user_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *DeleteDoctorRequest) GetUserId() string {
@@ -186,7 +262,11 @@ var File_proto_user_user_proto protoreflect.FileDescriptor
 
 const file_proto_user_user_proto_rawDesc = "" +
 	"\n" +
-	"\x15proto/user/user.proto\x12\x06authpb\x1a\x1bgoogle/protobuf/empty.proto\"\xb8\x02\n" +
+	"\x15proto/user/user.proto\x12\x06authpb\x1a\x1bgoogle/protobuf/empty.proto\"c\n" +
+	"\x0eProfilePicture\x12\x1a\n" +
+	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x18\n" +
+	"\acontent\x18\x04 \x01(\fR\acontent\x12\x1b\n" +
+	"\tmime_type\x18\x05 \x01(\tR\bmimeType\"\x95\x03\n" +
 	"\x13CreateDoctorRequest\x12\x1d\n" +
 	"\n" +
 	"first_name\x18\x01 \x01(\tR\tfirstName\x12\x1f\n" +
@@ -201,7 +281,9 @@ const file_proto_user_user_proto_rawDesc = "" +
 	"\tspecialty\x18\b \x01(\tR\tspecialty\x12'\n" +
 	"\x0fwork_experience\x18\t \x01(\tR\x0eworkExperience\x12 \n" +
 	"\vdescription\x18\n" +
-	" \x01(\tR\vdescription\".\n" +
+	" \x01(\tR\vdescription\x12\x1a\n" +
+	"\bservices\x18\v \x03(\tR\bservices\x12?\n" +
+	"\x0fprofile_picture\x18\f \x01(\v2\x16.authpb.ProfilePictureR\x0eprofilePicture\".\n" +
 	"\x13DeleteDoctorRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId2\x90\x01\n" +
 	"\x04User\x12C\n" +
@@ -220,22 +302,24 @@ func file_proto_user_user_proto_rawDescGZIP() []byte {
 	return file_proto_user_user_proto_rawDescData
 }
 
-var file_proto_user_user_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_proto_user_user_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_proto_user_user_proto_goTypes = []any{
-	(*CreateDoctorRequest)(nil), // 0: authpb.CreateDoctorRequest
-	(*DeleteDoctorRequest)(nil), // 1: authpb.DeleteDoctorRequest
-	(*emptypb.Empty)(nil),       // 2: google.protobuf.Empty
+	(*ProfilePicture)(nil),      // 0: authpb.ProfilePicture
+	(*CreateDoctorRequest)(nil), // 1: authpb.CreateDoctorRequest
+	(*DeleteDoctorRequest)(nil), // 2: authpb.DeleteDoctorRequest
+	(*emptypb.Empty)(nil),       // 3: google.protobuf.Empty
 }
 var file_proto_user_user_proto_depIdxs = []int32{
-	0, // 0: authpb.User.CreateDoctor:input_type -> authpb.CreateDoctorRequest
-	1, // 1: authpb.User.DeleteDoctor:input_type -> authpb.DeleteDoctorRequest
-	2, // 2: authpb.User.CreateDoctor:output_type -> google.protobuf.Empty
-	2, // 3: authpb.User.DeleteDoctor:output_type -> google.protobuf.Empty
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: authpb.CreateDoctorRequest.profile_picture:type_name -> authpb.ProfilePicture
+	1, // 1: authpb.User.CreateDoctor:input_type -> authpb.CreateDoctorRequest
+	2, // 2: authpb.User.DeleteDoctor:input_type -> authpb.DeleteDoctorRequest
+	3, // 3: authpb.User.CreateDoctor:output_type -> google.protobuf.Empty
+	3, // 4: authpb.User.DeleteDoctor:output_type -> google.protobuf.Empty
+	3, // [3:5] is the sub-list for method output_type
+	1, // [1:3] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_proto_user_user_proto_init() }
@@ -249,7 +333,7 @@ func file_proto_user_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_user_user_proto_rawDesc), len(file_proto_user_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

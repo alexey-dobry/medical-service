@@ -6,6 +6,12 @@ option go_package = "github.com/alexey-dobry/medical-service/internal/pkg/gen/au
 
 import "google/protobuf/empty.proto";
 
+message ProfilePicture {
+  string filename = 1;
+  bytes content = 4; // файл целиком
+  string mime_type = 5;
+}
+
 service User {
   rpc CreateDoctor (CreateDoctorRequest) returns (google.protobuf.Empty);
   rpc DeleteDoctor (DeleteDoctorRequest) returns (google.protobuf.Empty);
@@ -22,6 +28,8 @@ message CreateDoctorRequest {
   string specialty = 8;
   string work_experience = 9;
   string description = 10;
+  repeated string services = 11;
+  ProfilePicture profile_picture = 12;
 }
 
 message DeleteDoctorRequest {
