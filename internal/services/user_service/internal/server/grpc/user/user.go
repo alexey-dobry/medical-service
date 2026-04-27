@@ -17,6 +17,29 @@ import (
 )
 
 func (s *GRPCServer) CreateDoctor(ctx context.Context, req *pb.CreateDoctorRequest) (*emptypb.Empty, error) {
+	photoID := uuid.NewString()
+	storageKey := fmt.Sprintf("files/%s", photoID)
+
+	photoMeta := model.Photo{
+		ID:         photoID,
+		Name:       "profile_photo",
+		MimeType:   req.ProfilePicture.MimeType,
+		Size:       int64(len(req.ProfilePicture.Content)),
+		StorageKey: storageKey,
+	}
+
+	err := s.store.Meta().Create(photoMeta)
+	if err != nil {
+		storageKey = "files/default"
+	}
+
+	s.store.Photos().Put(
+		storageKey,
+		bytes.NewReader(req.ProfilePicture.Content),
+		int64(len(req.ProfilePicture.Content)),
+		req.ProfilePicture.MimeType,
+	)
+
 	birthDate, _ := time.Parse("2006-01-02", req.BirthDate)
 
 	user := model.User{
@@ -27,6 +50,7 @@ func (s *GRPCServer) CreateDoctor(ctx context.Context, req *pb.CreateDoctorReque
 		Email:      req.Email,
 		Sex:        req.Sex,
 		BirthDate:  birthDate,
+		PhotoID:    photoID,
 	}
 
 	if err := user.Validate(); err != nil {
@@ -43,7 +67,7 @@ func (s *GRPCServer) CreateDoctor(ctx context.Context, req *pb.CreateDoctorReque
 		Description:    req.Description,
 	}
 
-	err := s.store.User().AddDoctor(user, doctorData)
+	err = s.store.User().AddDoctor(user, doctorData)
 	if err != nil {
 		s.logger.Errorf("Failed to add new user to data: %s", err)
 		return nil, status.Error(codes.Internal, "Internal server error")
@@ -66,26 +90,6 @@ func (s *GRPCServer) CreateDoctor(ctx context.Context, req *pb.CreateDoctorReque
 		s.logger.Errorf("Failed to add new doctor search params: %s", err)
 		return nil, status.Error(codes.Internal, "Internal server error")
 	}
-
-	photoID := uuid.New()
-	storageKey := fmt.Sprintf("files/%s", photoID.String())
-
-	photo := model.Photo{
-		ID:         photoID.String(),
-		Name:       "profile_photo",
-		MimeType:   req.ProfilePicture.MimeType,
-		Size:       int64(len(req.ProfilePicture.Content)),
-		StorageKey: storageKey,
-	}
-
-	s.store.Meta().Create(photo)
-
-	s.store.Photos().Put(
-		storageKey,
-		bytes.NewReader(req.ProfilePicture.Content),
-		int64(len(req.ProfilePicture.Content)),
-		req.ProfilePicture.MimeType,
-	)
 
 	return &emptypb.Empty{}, nil
 }

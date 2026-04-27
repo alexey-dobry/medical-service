@@ -15,6 +15,7 @@ type User struct {
 	Email      string    `validate:"required,email"`
 	Sex        string    `validate:"required"`
 	BirthDate  time.Time `validate:"required"`
+	PhotoID    string    `validate:"required"`
 }
 
 func (u *User) Validate() error {

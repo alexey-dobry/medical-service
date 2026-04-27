@@ -31,24 +31,24 @@ func (r *Repository) Put(
 	return err
 }
 
-func (r *Repository) Get(key string) (io.ReadCloser, error) {
-	obj, err := r.db.GetObject(
-		context.Background(),
-		r.bucket,
-		key,
-		minio.GetObjectOptions{},
-	)
-	if err != nil {
-		return nil, err
-	}
+// func (r *Repository) Get(key string) (string, error) {
+// 	obj, err := r.db.GetObject(
+// 		context.Background(),
+// 		r.bucket,
+// 		key,
+// 		minio.GetObjectOptions{},
+// 	)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	if _, err := obj.Stat(); err != nil {
-		_ = obj.Close()
-		return nil, err
-	}
+// 	if _, err := obj.Stat(); err != nil {
+// 		_ = obj.Close()
+// 		return nil, err
+// 	}
 
-	return obj, nil
-}
+// 	return obj, nil
+// }
 
 func (r *Repository) Delete(key string) error {
 	return r.db.RemoveObject(

@@ -44,7 +44,7 @@ type SearchRepository interface {
 type PhotosRepository interface {
 	Put(key string, reader io.Reader, size int64, contentType string) error
 
-	Get(key string) (io.ReadCloser, error)
+	// Get(key string) (string, error)
 
 	Delete(key string) error
 
