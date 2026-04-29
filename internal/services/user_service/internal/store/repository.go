@@ -18,6 +18,8 @@ type UserRepository interface {
 
 	DeleteUser(ID uuid.UUID) error
 
+	UpdateUser(ID uuid.UUID, data map[string]interface{}) error
+
 	Close() error
 }
 
@@ -34,7 +36,7 @@ type MetaRepository interface {
 type SearchRepository interface {
 	AddDoctor(doctorData model.DoctorSearchParams) error
 
-	SearchDoctor(searchParams model.DoctorSearchParams) (uuid.UUID, error)
+	SearchDoctor(searchParams model.DoctorSearchParams) ([]uuid.UUID, error)
 
 	DeleteDoctor(ID uuid.UUID) error
 
@@ -44,7 +46,7 @@ type SearchRepository interface {
 type PhotosRepository interface {
 	Put(key string, reader io.Reader, size int64, contentType string) error
 
-	// Get(key string) (string, error)
+	Get(key string) (string, error)
 
 	Delete(key string) error
 

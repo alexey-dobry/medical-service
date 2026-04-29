@@ -3,6 +3,7 @@ package minio
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model"
 	"github.com/minio/minio-go/v7"
@@ -31,24 +32,30 @@ func (r *Repository) Put(
 	return err
 }
 
-// func (r *Repository) Get(key string) (string, error) {
-// 	obj, err := r.db.GetObject(
-// 		context.Background(),
-// 		r.bucket,
-// 		key,
-// 		minio.GetObjectOptions{},
-// 	)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+func (r *Repository) Get(key string) (string, error) {
+	_, err := r.db.StatObject(
+		context.Background(),
+		r.bucket,
+		key,
+		minio.StatObjectOptions{},
+	)
+	if err != nil {
+		return "", err
+	}
 
-// 	if _, err := obj.Stat(); err != nil {
-// 		_ = obj.Close()
-// 		return nil, err
-// 	}
+	presignedURL, err := r.db.PresignedGetObject(
+		context.Background(),
+		r.bucket,
+		key,
+		7*24*time.Hour,
+		nil,
+	)
+	if err != nil {
+		return "", err
+	}
 
-// 	return obj, nil
-// }
+	return presignedURL.String(), nil
+}
 
 func (r *Repository) Delete(key string) error {
 	return r.db.RemoveObject(

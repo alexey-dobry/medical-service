@@ -74,27 +74,25 @@ func (r *Repository) DeleteDoctor(ID uuid.UUID) error {
 
 }
 
-func (r *Repository) SearchDoctor(searchParams model.DoctorSearchParams) (uuid.UUID, error) {
+func (r *Repository) SearchDoctor(searchParams model.DoctorSearchParams) ([]uuid.UUID, error) {
 	query := buildSearchQuery(searchParams)
-
 	body, err := json.Marshal(query)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("searchDoctor: marshal query: %w", err)
+		return nil, fmt.Errorf("searchDoctor: marshal query: %w", err)
 	}
 
 	res, err := r.db.Search(
 		r.db.Search.WithIndex(r.index),
 		r.db.Search.WithBody(bytes.NewReader(body)),
-		r.db.Search.WithSize(1),
 		r.db.Search.WithContext(context.Background()),
 	)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("searchDoctor: search request: %w", err)
+		return nil, fmt.Errorf("searchDoctor: search request: %w", err)
 	}
 	defer res.Body.Close()
 
 	if res.IsError() {
-		return uuid.Nil, fmt.Errorf("searchDoctor: elasticsearch error [%s]", res.Status())
+		return nil, fmt.Errorf("searchDoctor: elasticsearch error [%s]", res.Status())
 	}
 
 	var result struct {
@@ -106,21 +104,24 @@ func (r *Repository) SearchDoctor(searchParams model.DoctorSearchParams) (uuid.U
 			} `json:"hits"`
 		} `json:"hits"`
 	}
-
 	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
-		return uuid.Nil, fmt.Errorf("searchDoctor: decode response: %w", err)
+		return nil, fmt.Errorf("searchDoctor: decode response: %w", err)
 	}
 
 	if len(result.Hits.Hits) == 0 {
-		return uuid.Nil, fmt.Errorf("searchDoctor: no results found")
+		return nil, fmt.Errorf("searchDoctor: no results found")
 	}
 
-	id, err := uuid.Parse(result.Hits.Hits[0].Source.ID)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("searchDoctor: parse uuid %q: %w", result.Hits.Hits[0].Source.ID, err)
+	ids := make([]uuid.UUID, 0, len(result.Hits.Hits))
+	for _, hit := range result.Hits.Hits {
+		id, err := uuid.Parse(hit.Source.ID)
+		if err != nil {
+			return nil, fmt.Errorf("searchDoctor: parse uuid %q: %w", hit.Source.ID, err)
+		}
+		ids = append(ids, id)
 	}
 
-	return id, nil
+	return ids, nil
 }
 
 func buildSearchQuery(p model.DoctorSearchParams) map[string]interface{} {
