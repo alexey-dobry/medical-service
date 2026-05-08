@@ -1,7 +1,9 @@
 package rest
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -280,5 +282,166 @@ func (s *RESTServer) handleGetDoctorDetails() fiber.Handler {
 				"photo":          photoURL,
 			},
 		})
+	}
+}
+
+func (s *RESTServer) handleCreateDoctor() fiber.Handler {
+	type createDoctorRequest struct {
+		FirstName      string   `json:"first_name"`
+		MiddleName     string   `json:"middle_name"`
+		LastName       string   `json:"last_name"`
+		Phone          string   `json:"phone"`
+		Email          string   `json:"email"`
+		Sex            string   `json:"sex"`
+		BirthDate      string   `json:"birth_date"`
+		Specialty      string   `json:"specialty"`
+		WorkExperience string   `json:"work_experience"`
+		Description    string   `json:"description"`
+		Services       []string `json:"services"`
+	}
+
+	return func(c *fiber.Ctx) error {
+		dataField := c.FormValue("data")
+		if dataField == "" {
+			s.logger.Error("Missing 'data' field in form")
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		var req createDoctorRequest
+		if err := json.Unmarshal([]byte(dataField), &req); err != nil {
+			s.logger.Errorf("Failed to parse JSON data: %s", err)
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		photoID := uuid.NewString()
+		storageKey := fmt.Sprintf("files/%s", photoID)
+
+		fileHeader, err := c.FormFile("photo")
+		if err != nil {
+			s.logger.Errorf("Failed to get photo file: %s", err)
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		file, err := fileHeader.Open()
+		if err != nil {
+			s.logger.Errorf("Failed to open uploaded file: %s", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+		defer file.Close()
+
+		mimeType := fileHeader.Header.Get("Content-Type")
+		fileSize := fileHeader.Size
+
+		photoMeta := model.Photo{
+			ID:         photoID,
+			Name:       "profile_photo",
+			MimeType:   mimeType,
+			Size:       fileSize,
+			StorageKey: storageKey,
+		}
+
+		if err := s.store.Meta().Create(photoMeta); err != nil {
+			s.logger.Errorf("Failed to save photo metadata: %s", err)
+			storageKey = "files/default"
+		} else {
+			if err := s.store.Photos().Put(
+				storageKey,
+				file,
+				fileSize,
+				mimeType,
+			); err != nil {
+				s.logger.Errorf("Failed to upload photo: %s", err)
+				storageKey = "files/default"
+			}
+		}
+
+		birthDate, _ := time.Parse("2006-01-02", req.BirthDate)
+		user := model.User{
+			FirstName:  req.FirstName,
+			MiddleName: req.MiddleName,
+			LastName:   req.LastName,
+			Phone:      req.Phone,
+			Email:      req.Email,
+			Sex:        req.Sex,
+			BirthDate:  birthDate,
+			PhotoID:    photoID,
+		}
+
+		if err := user.Validate(); err != nil {
+			s.logger.Errorf("User validation failed: %s", err)
+			return c.SendStatus(fiber.StatusBadRequest)
+		}
+
+		userID := uuid.New()
+		workExperience, _ := strconv.Atoi(req.WorkExperience)
+
+		doctorData := model.DoctorAdditionalData{
+			UserID:         userID.String(),
+			Specialty:      req.Specialty,
+			WorkExperience: workExperience,
+			Description:    req.Description,
+		}
+
+		if err := s.store.User().AddDoctor(user, doctorData); err != nil {
+			s.logger.Errorf("Failed to add new user to data: %s", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		searchParams := model.DoctorSearchParams{
+			ID:         userID.String(),
+			FirstName:  req.FirstName,
+			MiddleName: req.MiddleName,
+			LastName:   req.LastName,
+			Sex:        req.Sex,
+			Services:   req.Services,
+		}
+
+		if err := s.store.Search().AddDoctor(searchParams); err != nil {
+			s.store.User().DeleteUser(userID)
+			s.logger.Errorf("Failed to add new doctor search params: %s", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		return c.SendStatus(fiber.StatusOK)
+	}
+}
+
+func (s *RESTServer) handleDeleteDoctor() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		doctorIDParam := c.Params("doctor_id")
+
+		err := s.grpcClient.DeleteUser(client.DeleteRequest{
+			UserID: doctorIDParam,
+		})
+		if err != nil {
+			s.logger.Errorf("Failed to delete user credentials: %s", err)
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
+		id, _ := uuid.Parse(doctorIDParam)
+
+		for range 5 {
+			err = s.store.User().DeleteUser(id)
+			if err == nil {
+				break
+			}
+		}
+
+		var photoStorageKey string
+		for range 5 {
+			photoStorageKey, err = s.store.Meta().Delete(id)
+			if err == nil {
+				break
+			}
+		}
+
+		for range 5 {
+			err = s.store.Photos().Delete(photoStorageKey)
+			if err == nil {
+				break
+			}
+		}
+
+		return c.SendStatus(fiber.StatusOK)
 	}
 }

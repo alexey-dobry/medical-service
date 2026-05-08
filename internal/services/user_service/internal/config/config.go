@@ -7,7 +7,6 @@ import (
 
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger/zap"
 	"github.com/alexey-dobry/medical-service/internal/pkg/validator"
-	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/client/grpc"
 	client "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/client/grpc"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/server/rest"
 	store "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store/user"
@@ -16,7 +15,6 @@ import (
 
 type Config struct {
 	Logger zap.Config    `yaml:"logger"`
-	GRPC   grpc.Config   `yaml:"grpc"`
 	REST   rest.Config   `yaml:"rest"`
 	Store  store.Config  `yaml:"store"`
 	Client client.Config `yaml:"client"`

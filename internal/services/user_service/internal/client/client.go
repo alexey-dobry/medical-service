@@ -1,5 +1,11 @@
 package client
 
+type Client interface {
+	RegisterPatient(request RegisterRequest) (RegisterPatientResponse, error)
+	RegisterDoctor(request RegisterRequest) error
+	DeleteUser(DeleteRequest) error
+}
+
 type RegisterRequest struct {
 	UserID   string
 	Email    string
@@ -14,10 +20,4 @@ type RegisterPatientResponse struct {
 
 type DeleteRequest struct {
 	UserID string
-}
-
-type Client interface {
-	RegisterPatient(request RegisterRequest) (RegisterPatientResponse, error)
-	RegisterDoctor(request RegisterRequest) error
-	DeleteUser(DeleteRequest) error
 }

@@ -7,6 +7,8 @@ func (s *RESTServer) initRoutes() {
 	s.fiberApp.Get("/users/profile/patient", s.handleGetPatientProfile(), middleware.ValidateJWT(s.middlewareConfig))
 	s.fiberApp.Get("/users/profile/doctor", s.handleGetDoctorProfile(), middleware.ValidateJWT(s.middlewareConfig))
 	s.fiberApp.Patch("/users/profile", s.handleUpdateProfile(), middleware.ValidateJWT(s.middlewareConfig))
+	s.fiberApp.Post("/users/doctors", s.handleCreateDoctor())
+	s.fiberApp.Delete("/users/doctors", s.handleDeleteDoctor())
 	s.fiberApp.Get("/users/doctors/search", s.handleSearchDoctors(), middleware.ValidateJWT(s.middlewareConfig))
 	s.fiberApp.Get("/users/doctors/{doctor_id}/details", s.handleGetDoctorDetails(), middleware.ValidateJWT(s.middlewareConfig))
 }

@@ -13,11 +13,9 @@ import (
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger/zap"
 	grpcClient "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/client/grpc"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/config"
-	userrpc "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/server/grpc"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/server/rest"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store/user"
-	"google.golang.org/grpc"
 )
 
 type App interface {
@@ -25,9 +23,7 @@ type App interface {
 }
 
 type app struct {
-	GRPCServer        *grpc.Server
 	RESTServer        *rest.RESTServer
-	GRPCServerAddress string
 	RESTServerAddress string
 
 	store store.Store
@@ -41,7 +37,6 @@ func New(cfg config.Config) App {
 
 	a.logger = zap.NewLogger(cfg.Logger).WithFields("layer", "app")
 
-	a.GRPCServerAddress = fmt.Sprintf(":%d", cfg.GRPC.Port)
 	a.RESTServerAddress = fmt.Sprintf(":%d", cfg.REST.Port)
 
 	a.store, err = user.New(cfg.Store, a.logger)
@@ -51,7 +46,6 @@ func New(cfg config.Config) App {
 
 	client := grpcClient.New(a.logger, cfg.Client)
 
-	a.GRPCServer = userrpc.New(a.logger, a.store, client)
 	a.RESTServer = rest.New(a.logger, a.store, client, cfg.REST)
 
 	a.logger.Info("app was built")
@@ -65,11 +59,6 @@ func (a *app) Run(ctx context.Context) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	grpcListener, err := net.Listen("tcp", a.GRPCServerAddress)
-	if err != nil {
-		a.logger.Fatal(err)
-	}
-
 	restListener, err := net.Listen("tcp", a.RESTServerAddress)
 	if err != nil {
 		a.logger.Fatal(err)
@@ -78,21 +67,6 @@ func (a *app) Run(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	// gRPC servers
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		a.logger.Infof("Starting public grpc server at address %s...", a.GRPCServerAddress)
-		if err := a.GRPCServer.Serve(grpcListener); err != nil {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				a.logger.Errorf("Grpc server error: %s", err)
-				cancel()
-			}
-		}
-	}()
 
 	wg.Add(1)
 	go func() {
