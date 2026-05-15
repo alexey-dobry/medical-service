@@ -21,9 +21,9 @@ func (r *Repository) Add(medicalRecord model.MedicalRecord) error {
 	return err
 }
 
-func (r *Repository) Get(patientID uuid.UUID, limit, offset int) ([]model.MedicalRecord, error) {
+func (r *Repository) GetMany(patientID uuid.UUID, limit, offset int) ([]model.MedicalRecord, error) {
 	rows, err := r.db.Query(
-		`SELECT id, patient_id, doctor_id, type, conclusion, description, recommendations, date
+		`SELECT id, patient_id, doctor_id, type, conclusion, date
 			FROM medical_record
 			WHERE patient_id = $1
 			ORDER BY date DESC
@@ -44,8 +44,6 @@ func (r *Repository) Get(patientID uuid.UUID, limit, offset int) ([]model.Medica
 			&p.DoctorID,
 			&p.Type,
 			&p.Conclusion,
-			&p.Description,
-			&p.Recommendations,
 			&p.Date,
 		); err != nil {
 			return nil, err
@@ -58,6 +56,39 @@ func (r *Repository) Get(patientID uuid.UUID, limit, offset int) ([]model.Medica
 	}
 
 	return records, nil
+}
+
+func (r *Repository) GetOne(id uuid.UUID) (model.MedicalRecord, error) {
+	rows, err := r.db.Query(
+		`SELECT patient_id, doctor_id, type, conclusion, description, recommendations, date
+			FROM medical_record
+			WHERE id = $1`,
+		id,
+	)
+	if err != nil {
+		return model.MedicalRecord{}, err
+	}
+	defer rows.Close()
+
+	var p model.MedicalRecord
+	if err := rows.Scan(
+		&p.ID,
+		&p.PatientID,
+		&p.DoctorID,
+		&p.Type,
+		&p.Conclusion,
+		&p.Description,
+		&p.Recommendations,
+		&p.Date,
+	); err != nil {
+		return model.MedicalRecord{}, err
+	}
+
+	if err := rows.Err(); err != nil {
+		return model.MedicalRecord{}, err
+	}
+
+	return p, nil
 }
 
 func (r *Repository) Delete(id uuid.UUID) error {

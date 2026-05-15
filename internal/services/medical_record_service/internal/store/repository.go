@@ -10,7 +10,9 @@ import (
 type RecordRepository interface {
 	Add(medicalRecord model.MedicalRecord) error
 
-	Get(patientID uuid.UUID, limit, offset int) ([]model.MedicalRecord, error)
+	GetMany(patientID uuid.UUID, limit, offset int) ([]model.MedicalRecord, error)
+
+	GetOne(id uuid.UUID) (model.MedicalRecord, error)
 
 	Delete(id uuid.UUID) error
 
