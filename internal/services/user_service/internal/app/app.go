@@ -95,9 +95,6 @@ func (a *app) Run(ctx context.Context) {
 	a.logger.Info("stopping all services")
 
 	cancel()
-	if err := grpcListener.Close(); err != nil {
-		a.logger.Warnf("Internal net listener closing ended with error: %s", err)
-	}
 
 	if err := restListener.Close(); err != nil {
 		a.logger.Warnf("Public net listener closing ended with error: %s", err)
