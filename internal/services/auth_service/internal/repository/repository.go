@@ -1,9 +1,9 @@
-package store
+package repository
 
 import (
 	"time"
 
-	"github.com/alexey-dobry/medical-service/internal/pkg/model"
+	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/model"
 	"github.com/google/uuid"
 )
 

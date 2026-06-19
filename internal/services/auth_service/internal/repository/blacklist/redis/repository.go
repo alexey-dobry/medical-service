@@ -7,12 +7,12 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type BlacklistRepository struct {
+type RedisBlacklistRepository struct {
 	db     *redis.Client
 	logger logger.Logger
 }
 
-func New(logger logger.Logger, cfg Config) (*BlacklistRepository, error) {
+func New(logger logger.Logger, cfg RedisConfig) (*RedisBlacklistRepository, error) {
 	redisDSN := fmt.Sprintf("redis://%s:%s@%s:%d/%s",
 		cfg.User,
 		cfg.Password,
@@ -30,12 +30,12 @@ func New(logger logger.Logger, cfg Config) (*BlacklistRepository, error) {
 
 	db = redis.NewClient(opt)
 
-	return &BlacklistRepository{
+	return &RedisBlacklistRepository{
 		db:     db,
 		logger: logger,
 	}, nil
 }
 
-func (br *BlacklistRepository) Close() error {
+func (br *RedisBlacklistRepository) Close() error {
 	return br.db.Close()
 }

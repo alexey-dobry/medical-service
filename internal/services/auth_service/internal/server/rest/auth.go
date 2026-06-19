@@ -31,7 +31,7 @@ func (s *RESTServer) handleLogin() fiber.Handler {
 			return c.SendStatus(fiber.StatusBadRequest)
 		}
 
-		credentials, err := s.store.Credentials().GetOneByMail(req.Email)
+		credentials, err := s.credentialsRepo.GetOneByMail(req.Email)
 		if err != nil {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
@@ -93,13 +93,13 @@ func (s *RESTServer) handleLogout() fiber.Handler {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		err = s.store.Blacklist().BlacklistAccessToken(accessClaims.ID, accessClaims.ExpiresAt.Sub(time.Now()))
+		err = s.blacklistRepo.BlacklistAccessToken(accessClaims.ID, accessClaims.ExpiresAt.Sub(time.Now()))
 		if err != nil {
 			s.logger.Errorf("Failed to blacklist access token: %s", err)
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		err = s.store.Blacklist().StoreLogoutSession(refreshClaims.ID, refreshClaims.ExpiresAt.Sub(time.Now()))
+		err = s.blacklistRepo.StoreLogoutSession(refreshClaims.ID, refreshClaims.ExpiresAt.Sub(time.Now()))
 		if err != nil {
 			s.logger.Errorf("Failed to blacklist refresh token: %s", err)
 			return c.SendStatus(fiber.StatusInternalServerError)
@@ -145,7 +145,7 @@ func (s *RESTServer) handleRefresh() fiber.Handler {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		err = s.store.Blacklist().BlacklistAccessToken(accessClaims.ID, accessClaims.ExpiresAt.Sub(time.Now()))
+		err = s.blacklistRepo.BlacklistAccessToken(accessClaims.ID, accessClaims.ExpiresAt.Sub(time.Now()))
 		if err != nil {
 			s.logger.Errorf("Failed to blacklist access token: %s", err)
 			return c.SendStatus(fiber.StatusInternalServerError)

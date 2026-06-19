@@ -15,7 +15,6 @@ import (
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/jwt"
 	authrpc "github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/server/grpc"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/server/rest"
-	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/store"
 	"google.golang.org/grpc"
 )
 

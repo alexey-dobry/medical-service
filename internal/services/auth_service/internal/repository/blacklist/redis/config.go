@@ -1,6 +1,6 @@
 package redis
 
-type Config struct {
+type RedisConfig struct {
 	Port         int    `validate:"required" yaml:"port"`
 	Host         string `validate:"required" yaml:"host"`
 	User         string `validate:"required" yaml:"user"`

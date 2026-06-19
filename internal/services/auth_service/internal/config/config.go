@@ -8,18 +8,20 @@ import (
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger/zap"
 	"github.com/alexey-dobry/medical-service/internal/pkg/validator"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/jwt"
+	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/repository/blacklist/redis"
+	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/repository/credentials/pg"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/server/grpc"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/server/rest"
-	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/store"
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
 type Config struct {
-	Logger zap.Config   `yaml:"logger"`
-	GRPC   grpc.Config  `yaml:"grpc"`
-	REST   rest.Config  `yaml:"rest"`
-	Store  store.Config `yaml:"store"`
-	JWT    jwt.Config   `yaml:"jwt"`
+	Logger                 zap.Config        `yaml:"logger"`
+	GRPC                   grpc.Config       `yaml:"grpc"`
+	REST                   rest.Config       `yaml:"rest"`
+	CredentialsRrepository pg.PostgresConfig `yaml:"cred_repo_pg"`
+	BlacklistRepository    redis.RedisConfig `yaml:"black_repo_redis"`
+	JWT                    jwt.Config        `yaml:"jwt"`
 }
 
 func MustLoad() Config {

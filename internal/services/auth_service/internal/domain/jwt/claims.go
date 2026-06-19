@@ -1,7 +1,7 @@
 package jwt
 
 import (
-	"github.com/alexey-dobry/medical-service/internal/pkg/model"
+	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/model"
 	"github.com/golang-jwt/jwt/v5"
 )
 

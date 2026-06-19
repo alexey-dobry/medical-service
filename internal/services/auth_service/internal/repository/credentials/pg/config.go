@@ -1,6 +1,6 @@
 package pg
 
-type Config struct {
+type PostgresConfig struct {
 	MaxRetries   int    `validate:"required" yaml:"max_retries"`
 	RetryDelay   int    `validate:"required" yaml:"retry_delay"`
 	Port         int    `validate:"required" yaml:"port"`

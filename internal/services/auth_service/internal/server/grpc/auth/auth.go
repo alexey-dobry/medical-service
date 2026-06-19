@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	pb "github.com/alexey-dobry/medical-service/internal/pkg/gen/auth"
-	"github.com/alexey-dobry/medical-service/internal/pkg/model"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/jwt"
+	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/model"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/utils"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -32,7 +32,7 @@ func (s *GRPCServer) RegisterPatient(ctx context.Context, req *pb.RegisterReques
 		return nil, status.Error(codes.InvalidArgument, "Invalid user field value")
 	}
 
-	err = s.repository.Add(credentials)
+	err = s.credentialsRepo.Add(credentials)
 	if err != nil && strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 		return nil, status.Error(codes.AlreadyExists, "Account with specified email already exists")
 	} else if err != nil {
@@ -75,7 +75,7 @@ func (s *GRPCServer) RegisterDoctor(ctx context.Context, req *pb.RegisterRequest
 		return nil, status.Error(codes.InvalidArgument, "Invalid user field value")
 	}
 
-	err = s.repository.Add(credentials)
+	err = s.credentialsRepo.Add(credentials)
 	if err != nil && strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 		return nil, status.Error(codes.AlreadyExists, "Account with specified email already exists")
 	} else if err != nil {
@@ -92,7 +92,7 @@ func (s *GRPCServer) DeleteUser(ctx context.Context, req *pb.DeleteUserRequest) 
 		return nil, status.Error(codes.Internal, "Internal server error")
 	}
 
-	err = s.repository.Delete(userID)
+	err = s.credentialsRepo.Delete(userID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Internal server error")
 	}

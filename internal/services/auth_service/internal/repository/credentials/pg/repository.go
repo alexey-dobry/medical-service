@@ -10,12 +10,12 @@ import (
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 )
 
-type CredentialsRepository struct {
+type PostgresCredentialsRepository struct {
 	db     *sql.DB
 	logger logger.Logger
 }
 
-func New(logger logger.Logger, cfg Config) (*CredentialsRepository, error) {
+func New(logger logger.Logger, cfg PostgresConfig) (*PostgresCredentialsRepository, error) {
 	logger = logger.WithFields("layer", "pgstore")
 
 	// pgs connection string
@@ -44,12 +44,12 @@ func New(logger logger.Logger, cfg Config) (*CredentialsRepository, error) {
 
 	logger.Info("repository was connected")
 
-	return &CredentialsRepository{
+	return &PostgresCredentialsRepository{
 		db:     db,
 		logger: logger,
 	}, nil
 }
 
-func (cr *CredentialsRepository) Close() error {
+func (cr *PostgresCredentialsRepository) Close() error {
 	return cr.db.Close()
 }
