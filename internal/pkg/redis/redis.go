@@ -18,7 +18,7 @@ type Redis struct {
 	connAttempts int
 	connTimeout  time.Duration
 
-	Redis *redis.Client
+	Client *redis.Client
 }
 
 func New(url string, opts ...Option) (*Redis, error) {
@@ -41,13 +41,13 @@ func New(url string, opts ...Option) (*Redis, error) {
 	clientConfig.DialerRetries = rd.connAttempts
 	clientConfig.MaxActiveConns = rd.maxCons
 
-	rd.Redis = redis.NewClient(clientConfig)
+	rd.Client = redis.NewClient(clientConfig)
 
 	return rd, nil
 }
 
 func (r *Redis) Close() {
-	if r.Redis != nil {
-		r.Redis.Close()
+	if r.Client != nil {
+		r.Client.Close()
 	}
 }
