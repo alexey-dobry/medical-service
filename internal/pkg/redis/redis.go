@@ -1,0 +1,53 @@
+package redis
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+const (
+	_defaultMaxCons      = 0
+	_defaultConnAttempts = 10
+	_defaultConnTimeout  = time.Second
+)
+
+type Redis struct {
+	maxCons      int
+	connAttempts int
+	connTimeout  time.Duration
+
+	Redis *redis.Client
+}
+
+func New(url string, opts ...Option) (*Redis, error) {
+	rd := &Redis{
+		maxCons:      _defaultMaxCons,
+		connAttempts: _defaultConnAttempts,
+		connTimeout:  _defaultConnTimeout,
+	}
+
+	for _, opt := range opts {
+		opt(rd)
+	}
+
+	clientConfig, err := redis.ParseURL(url)
+	if err != nil {
+		return nil, fmt.Errorf("redis - New() - failed to parse conn url: %w", err)
+	}
+
+	clientConfig.DialerRetryTimeout = rd.connTimeout
+	clientConfig.DialerRetries = rd.connAttempts
+	clientConfig.MaxActiveConns = rd.maxCons
+
+	rd.Redis = redis.NewClient(clientConfig)
+
+	return rd, nil
+}
+
+func (r *Redis) Close() {
+	if r.Redis != nil {
+		r.Redis.Close()
+	}
+}
