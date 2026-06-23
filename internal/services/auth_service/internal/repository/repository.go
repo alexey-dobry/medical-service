@@ -3,20 +3,18 @@ package repository
 import (
 	"time"
 
-	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/model"
+	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/entity"
 	"github.com/google/uuid"
 )
 
 type CredentialsRepository interface {
-	Add(userCredentials model.Credentials) error
+	Add(userCredentials entity.Credentials) error
 
-	GetOneByMail(email string) (model.Credentials, error)
+	GetOneByMail(email string) (entity.Credentials, error)
 
-	GetOneByID(userID uuid.UUID) (model.Credentials, error)
+	GetOneByID(userID uuid.UUID) (entity.Credentials, error)
 
-	Delete(ID uuid.UUID) error
-
-	Close() error
+	Delete(id uuid.UUID) error
 }
 
 type BlacklistRepository interface {
@@ -27,6 +25,4 @@ type BlacklistRepository interface {
 	StoreLogoutSession(jti string, expiresIn time.Duration) error
 
 	IsSessionLoggedOut(jti string) (bool, error)
-
-	Close() error
 }
