@@ -21,8 +21,8 @@ func NewCredentialsRepository(pg *postgres.Postgres) *CredentialsRepository {
 func (r *CredentialsRepository) Add(ctx context.Context, credentials entity.Credentials) error {
 	sql, args, err := r.Builder.
 		Insert("credentials").
-		Columns("user_id,email", "password_hash,role").
-		Values(credentials.UserID, credentials.Email, credentials.PasswordHash, credentials.Role).
+		Columns("id", "user_id", "email", "password_hash", "role").
+		Values(credentials.ID, credentials.UserID, credentials.Email, credentials.PasswordHash, credentials.Role).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("credentialsRepository - Add() - failed to build query string: %w", err)
