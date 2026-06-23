@@ -1,11 +1,11 @@
 package jwt
 
 import (
-	"github.com/golang-jwt/jwt/v5"
+	jwtlib "github.com/golang-jwt/jwt/v5"
 )
 
 type Claims struct {
-	jwt.RegisteredClaims
+	jwtlib.RegisteredClaims
 	Role string `json:"role"`
 }
 
