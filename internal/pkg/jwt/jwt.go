@@ -59,7 +59,7 @@ func (h *Handler) GenerateToken(userID, role string, jwtType TokenType) (string,
 	return tokenString, nil
 }
 
-func (h *Handler) ParseToken(tokenString string, jwtType TokenType) (string, string, error) {
+func (h *Handler) ParseToken(tokenString string, jwtType TokenType) (Claims, error) {
 	token, err := jwtlib.Parse(tokenString, func(token *jwtlib.Token) (any, error) {
 		if _, ok := token.Method.(*jwtlib.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("%w: %v", ErrUnexpectedSigningMethod, token.Header["alg"])
@@ -68,17 +68,15 @@ func (h *Handler) ParseToken(tokenString string, jwtType TokenType) (string, str
 		return h.getSecret(jwtType), nil
 	})
 	if err != nil {
-		return "", "", fmt.Errorf("jwt - ParseToken() - failed to parse token: %w", err)
+		return Claims{}, fmt.Errorf("jwt - ParseToken() - failed to parse token: %w", err)
 	}
 
-	claims, ok := token.Claims.(*Claims)
+	claims, ok := token.Claims.(Claims)
 	if !ok {
-		return "", "", fmt.Errorf("jwt - ParseToken() - %w", ErrFailedToCastType)
+		return Claims{}, fmt.Errorf("jwt - ParseToken() - %w", ErrFailedToCastType)
 	}
-	sub, _ := claims.GetSubject()
-	role, _ := claims.GetRole()
 
-	return sub, role, nil
+	return claims, nil
 }
 
 func (h *Handler) getSecret(jwtType TokenType) []byte {
