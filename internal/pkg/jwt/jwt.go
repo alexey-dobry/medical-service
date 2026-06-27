@@ -20,12 +20,7 @@ const (
 	RefreshToken TokenType = "REFRESH"
 )
 
-type Handler interface {
-	GenerateJWT(claims Claims, jwtType TokenType) (string, error)
-	ValidateJWT(token string, jwtType TokenType) (Claims, error)
-}
-
-type handler struct {
+type Handler struct {
 	accessSecret  string
 	refreshSecret string
 
@@ -33,8 +28,8 @@ type handler struct {
 	refreshTTL time.Duration
 }
 
-func NewHandler(cfg Config) *handler {
-	return &handler{
+func New(cfg Config) *Handler {
+	return &Handler{
 		accessSecret:  cfg.AccessSecret,
 		refreshSecret: cfg.RefreshSecret,
 		accessTTL:     cfg.AccessTTL,
@@ -42,7 +37,7 @@ func NewHandler(cfg Config) *handler {
 	}
 }
 
-func (h *handler) GenerateToken(userID string, role string, jwtType TokenType) (string, error) {
+func (h *Handler) GenerateToken(userID, role string, jwtType TokenType) (string, error) {
 	TTL := h.getTTL(jwtType)
 	secret := h.getSecret(jwtType)
 
@@ -64,7 +59,7 @@ func (h *handler) GenerateToken(userID string, role string, jwtType TokenType) (
 	return tokenString, nil
 }
 
-func (h *handler) ParseToken(tokenString string, jwtType TokenType) (string, string, error) {
+func (h *Handler) ParseToken(tokenString string, jwtType TokenType) (string, string, error) {
 	token, err := jwtlib.Parse(tokenString, func(token *jwtlib.Token) (any, error) {
 		if _, ok := token.Method.(*jwtlib.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("%w: %v", ErrUnexpectedSigningMethod, token.Header["alg"])
@@ -86,7 +81,7 @@ func (h *handler) ParseToken(tokenString string, jwtType TokenType) (string, str
 	return sub, role, nil
 }
 
-func (h *handler) getSecret(jwtType TokenType) []byte {
+func (h *Handler) getSecret(jwtType TokenType) []byte {
 	switch jwtType {
 	case AccessToken:
 		return []byte(h.accessSecret)
@@ -97,7 +92,7 @@ func (h *handler) getSecret(jwtType TokenType) []byte {
 	}
 }
 
-func (h *handler) getTTL(jwtType TokenType) time.Duration {
+func (h *Handler) getTTL(jwtType TokenType) time.Duration {
 	switch jwtType {
 	case AccessToken:
 		return h.accessTTL
