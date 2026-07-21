@@ -7,7 +7,6 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/alexey-dobry/medical-service/internal/pkg/postgres"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/entity"
-	"github.com/google/uuid"
 )
 
 type CredentialsRepository struct {
@@ -64,11 +63,11 @@ func (r *CredentialsRepository) GetOneByMail(ctx context.Context, email string) 
 	return c, nil
 }
 
-func (r *CredentialsRepository) GetOneByID(ctx context.Context, id uuid.UUID) (entity.Credentials, error) {
+func (r *CredentialsRepository) GetOneByID(ctx context.Context, userID string) (entity.Credentials, error) {
 	sql, args, err := r.Builder.
 		Select("email", "password_hash", "role").
 		From("credentials").
-		Where(sq.Eq{"user_id": id.String()}).
+		Where(sq.Eq{"user_id": userID}).
 		ToSql()
 	if err != nil {
 		return entity.Credentials{}, fmt.Errorf("credentialsRepository - GetOneByID() - failed to build query string: %w", err)
@@ -84,10 +83,10 @@ func (r *CredentialsRepository) GetOneByID(ctx context.Context, id uuid.UUID) (e
 	return c, nil
 }
 
-func (r *CredentialsRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *CredentialsRepository) Delete(ctx context.Context, userID string) error {
 	sql, args, err := r.Builder.
 		Delete("credentials").
-		Where(sq.Eq{"user_id": id.String()}).
+		Where(sq.Eq{"user_id": userID}).
 		ToSql()
 	if err != nil {
 		return fmt.Errorf("credentialsRepository - Delete() - failed to build query string: %w", err)

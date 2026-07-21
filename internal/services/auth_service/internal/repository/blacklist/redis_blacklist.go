@@ -16,30 +16,36 @@ func NewBlacklistRepository(rd *redis.Redis) *BlacklistRepository {
 	return &BlacklistRepository{rd}
 }
 
-func (r *BlacklistRepository) BlacklistAccessToken(jti string, expiresIn time.Duration) error {
-	status := r.Client.Set(context.Background(), fmt.Sprintf("blacklist:%s", jti), 1, expiresIn)
-	return fmt.Errorf("blacklistRepository - BlacklistAccessToken() - failed to blacklist token: %w", status.Err())
+func (r *BlacklistRepository) BlacklistToken(ctx context.Context, jti string, expiresIn time.Duration) error {
+	status := r.Client.Set(ctx, fmt.Sprintf("blacklist:%s", jti), 1, expiresIn)
+	return fmt.Errorf("blacklistRepository - BlacklistToken() - failed to blacklist token: %w", status.Err())
 }
 
-func (r *BlacklistRepository) IsAccessTokenBlacklisted(jti string) (bool, error) {
-	result, err := r.Client.Exists(context.Background(), fmt.Sprintf("blacklist:%s", jti)).Result()
+func (r *BlacklistRepository) IsTokenBlacklisted(ctx context.Context, jti string) (bool, error) {
+	result, err := r.Client.Exists(ctx, fmt.Sprintf("blacklist:%s", jti)).Result()
 	if err != nil {
-		return false, fmt.Errorf("blacklistRepository - IsAccessTokenBlacklisted() - failed to check if entry exists: %w", err)
+		return false, fmt.Errorf("blacklistRepository - IsTokenBlacklisted() - failed to check if entry exists: %w", err)
 	}
 
 	return result == 1, nil
 }
 
-func (r *BlacklistRepository) StoreLogoutSession(jti string, expiresIn time.Duration) error {
-	status := r.Client.Set(context.Background(), fmt.Sprintf("logout_session:%s", jti), 1, expiresIn)
-	return fmt.Errorf("blacklistRepository - StoreLogoutSession() - failed to store logout session: %w", status.Err())
-}
+func (r *BlacklistRepository) Logout(
+	ctx context.Context,
+	refreshJTI string,
+	accessJTI string,
+	refreshExpiresIn time.Duration,
+	accessExpiresIn time.Duration,
+) error {
+	tx := r.Client.TxPipeline()
 
-func (r *BlacklistRepository) IsSessionLoggedOut(jti string) (bool, error) {
-	result, err := r.Client.Exists(context.Background(), fmt.Sprintf("logout_session:%s", jti)).Result()
+	tx.Set(ctx, fmt.Sprintf("blacklist:%s", refreshJTI), 1, refreshExpiresIn)
+	tx.Set(ctx, fmt.Sprintf("blacklist:%s", accessJTI), 1, accessExpiresIn)
+
+	_, err := tx.Exec(ctx)
 	if err != nil {
-		return false, fmt.Errorf("blacklistRepository - IsSessionLoggedOut() - failed to check if entry exists: %w", err)
+		return fmt.Errorf("blacklistRepository - Logout() - failed to logout: %w", err)
 	}
 
-	return result == 1, nil
+	return nil
 }
