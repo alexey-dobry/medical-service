@@ -98,54 +98,29 @@ func (uc *UseCase) Login(ctx context.Context, email, password string) (string, s
 	return refreshToken, accessToken, nil
 }
 
-func (uc *UseCase) Logout(ctx context.Context, refreshToken, accessToken string) error {
-	accessClaims, err := uc.jwt.ParseToken(accessToken, jwt.AccessToken)
-	if err != nil {
-		return err
-	}
-
-	refreshClaims, err := uc.jwt.ParseToken(refreshToken, jwt.RefreshToken)
-	if err != nil {
-		return err
-	}
-
+func (uc *UseCase) Logout(ctx context.Context, refreshClaims, accessClaims jwt.Claims) error {
 	refreshExpiresIn := refreshClaims.ExpiresAt.Sub(time.Now())
 	accessExpiresIn := accessClaims.ExpiresAt.Sub(time.Now())
 
 	return uc.blacklistRepo.Logout(ctx, refreshClaims.ID, accessClaims.ID, refreshExpiresIn, accessExpiresIn)
 }
 
-func (uc *UseCase) Refresh(ctx context.Context, refreshToken, accessToken string) (string, string, error) {
-	refreshClaims, err := uc.jwt.ParseToken(refreshToken, jwt.RefreshToken)
-	if err != nil {
-		return "", "", err
-	}
-
+func (uc *UseCase) Refresh(ctx context.Context, refreshClaims, accessClaims jwt.Claims) (string, error) {
 	if !refreshClaims.ExpiresAt.Before(time.Now()) {
-		return "", "", fmt.Errorf("auth usecase - Refresh() - %w", ErrRefreshTokenExpired)
+		return "", fmt.Errorf("auth usecase - Refresh() - %w", ErrRefreshTokenExpired)
 	}
 
-	accessClaims, err := uc.jwt.ParseToken(accessToken, jwt.AccessToken)
+	err := uc.blacklistRepo.BlacklistToken(ctx, accessClaims.ID, accessClaims.ExpiresAt.Sub(time.Now()))
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	err = uc.blacklistRepo.BlacklistToken(ctx, accessClaims.ID, accessClaims.ExpiresAt.Sub(time.Now()))
+	accessToken, err := uc.jwt.GenerateToken(refreshClaims.Subject, string(refreshClaims.Role), jwt.AccessToken)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	refreshToken, err = uc.jwt.GenerateToken(refreshClaims.Subject, string(refreshClaims.Role), jwt.RefreshToken)
-	if err != nil {
-		return "", "", err
-	}
-
-	accessToken, err = uc.jwt.GenerateToken(refreshClaims.Subject, string(refreshClaims.Role), jwt.AccessToken)
-	if err != nil {
-		return "", "", err
-	}
-
-	return refreshToken, accessToken, nil
+	return accessToken, nil
 }
 
 func (uc *UseCase) Delete(ctx context.Context, userID string) error {
