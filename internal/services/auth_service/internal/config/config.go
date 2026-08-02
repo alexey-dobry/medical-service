@@ -16,12 +16,12 @@ import (
 )
 
 type Config struct {
-	Logger                 zap.Config        `yaml:"logger"`
-	GRPC                   grpc.Config       `yaml:"grpc"`
-	REST                   rest.Config       `yaml:"rest"`
-	CredentialsRrepository pg.PostgresConfig `yaml:"cred_repo_pg"`
-	BlacklistRepository    redis.RedisConfig `yaml:"black_repo_redis"`
-	JWT                    jwt.Config        `yaml:"jwt"`
+	Logger                zap.Config        `yaml:"logger"`
+	GRPC                  grpc.Config       `yaml:"grpc"`
+	REST                  rest.Config       `yaml:"rest"`
+	CredentialsRepository pg.PostgresConfig `yaml:"cred_repo_pg"`
+	BlacklistRepository   redis.RedisConfig `yaml:"black_repo_redis"`
+	JWT                   jwt.Config        `yaml:"jwt"`
 }
 
 func MustLoad() Config {
