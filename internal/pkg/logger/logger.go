@@ -1,5 +1,7 @@
 package logger
 
+//go:generate mockgen -surce=loger.go -destination=mocks/logger_mock.go -package=mocks
+
 type Logger interface {
 	Info(args ...interface{})
 	Infof(template string, args ...interface{})

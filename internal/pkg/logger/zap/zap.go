@@ -23,46 +23,51 @@ type zapLogger struct {
 
 const logDir = "./logs"
 
-// Config is struct to configure logger
+// Config — структура для настройки логгера.
 type Config struct {
 	Dir     string   `yaml:"dir"`
 	Targets []string `yaml:"log_targets"`
 }
 
-// NewLogger creates sugared zap logger with common config.
-// It logs into writer from params.
+// NewLogger создаёт sugared-логгер zap с общей конфигурацией и пишет в источники из cfg.
 func NewLogger(cfg Config) logger.Logger {
-	// making log file
-	os.MkdirAll(logDir, os.ModePerm)
-
-	logFile, err := os.OpenFile(filepath.Join(logDir, "main.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		log.Fatalf("error opening log file(%s): %s", logFile.Name(), err)
+	dir := cfg.Dir
+	if dir == "" {
+		dir = logDir
 	}
 
-	// making encoder config
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		log.Fatalf("error creating log dir(%s): %s", dir, err)
+	}
+
+	logPath := filepath.Join(dir, "main.log")
+	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Fatalf("error opening log file(%s): %s", logPath, err)
+	}
+
 	var zcfg zapcore.EncoderConfig
 	if os.Getenv("APP_ENV") == "development" {
 		zcfg = zap.NewDevelopmentEncoderConfig()
 	} else {
 		zcfg = zap.NewProductionEncoderConfig()
 	}
-	// time layout 2006-01-02T15:04:05.000Z0700
+	// формат времени 2006-01-02T15:04:05.000Z0700
 	zcfg.EncodeTime = zapcore.ISO8601TimeEncoder
 
 	fileEncoder := zapcore.NewJSONEncoder(zcfg)
 
-	// colorized output
 	zcfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 
 	consoleEncoder := zapcore.NewConsoleEncoder(zcfg)
 
-	// cores array
-	var levelEncoder zapcore.Level
-	if os.Getenv("LOG_LEVEL") == "debug" {
-		levelEncoder = zapcore.DebugLevel
-	} else {
-		levelEncoder = zapcore.ErrorLevel
+	// LOG_LEVEL принимает debug, info, warn, error; по умолчанию info.
+	levelEncoder := zapcore.InfoLevel
+	if raw := os.Getenv("LOG_LEVEL"); raw != "" {
+		if err := levelEncoder.Set(raw); err != nil {
+			log.Printf("unknown LOG_LEVEL %q, using info", raw)
+			levelEncoder = zapcore.InfoLevel
+		}
 	}
 
 	cores := []zapcore.Core{
@@ -70,7 +75,6 @@ func NewLogger(cfg Config) logger.Logger {
 		zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), levelEncoder),
 	}
 
-	// walk for tcp targets
 	for _, target := range cfg.Targets {
 		conn, err := net.Dial("tcp", target)
 		if err != nil {
