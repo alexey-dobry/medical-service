@@ -44,20 +44,27 @@ func New(url string, opts ...Option) (*Postgres, error) {
 		return nil, fmt.Errorf("postgres - New() - failed to parse conn url: %w", err)
 	}
 
-	poolConfig.MaxConns = safeIntToInt32(pg.maxPoolSize)
+	pg.Pool, err = pgxpool.NewWithConfig(context.Background(), poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("postgres - New() - failed to create pool: %w", err)
+	}
 
-	for range pg.connAttempts {
-		pg.Pool, err = pgxpool.NewWithConfig(context.Background(), poolConfig)
+	// pgxpool подключается лениво, поэтому пингуем: иначе БД, ещё стартующая, даст ошибку только на первом запросе.
+	for attempt := 1; attempt <= pg.connAttempts; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), pg.connTimeout)
+		err = pg.Pool.Ping(ctx)
+		cancel()
 		if err == nil {
 			break
 		}
 
-		log.Printf("Postgres is trying to connect, attempts left: %d", pg.connAttempts)
+		log.Printf("Postgres is trying to connect, attempts left: %d", pg.connAttempts-attempt)
 
 		time.Sleep(pg.connTimeout)
 	}
 
 	if err != nil {
+		pg.Pool.Close()
 		return nil, fmt.Errorf("postgres - New() - all attempts are timed out: %w", err)
 	}
 
