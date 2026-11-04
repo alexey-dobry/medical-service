@@ -3,7 +3,6 @@ package minio
 import (
 	"context"
 	"io"
-	"time"
 
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model"
 	"github.com/minio/minio-go/v7"
@@ -43,11 +42,11 @@ func (r *Repository) Get(key string) (string, error) {
 		return "", err
 	}
 
-	presignedURL, err := r.db.PresignedGetObject(
+	presignedURL, err := r.presigner.PresignedGetObject(
 		context.Background(),
 		r.bucket,
 		key,
-		7*24*time.Hour,
+		r.urlExpiry,
 		nil,
 	)
 	if err != nil {
