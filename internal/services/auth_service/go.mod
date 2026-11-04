@@ -1,5 +1,7 @@
 module github.com/alexey-dobry/medical-service/internal/services/auth_service
 
+replace github.com/alexey-dobry/medical-service/internal/pkg => ../../pkg
+
 go 1.26.2
 
 require (

@@ -1,0 +1,8 @@
+go 1.26.2
+
+use (
+	./internal/pkg
+	./internal/services/auth_service
+	./internal/services/user_service
+	./tests
+)

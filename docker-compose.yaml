@@ -1,0 +1,159 @@
+# Локальное окружение для сценария auth + user.
+#   docker compose up --build
+# Для секретов есть dev-значения по умолчанию, чтобы стек поднимался на чистой машине;
+# для чего-то кроме локалки переопределяйте их в .env (см. .env.example).
+
+x-db-passwords: &db-passwords
+  AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-auth-dev-password}
+  USER_DB_PASSWORD: ${USER_DB_PASSWORD:-user-dev-password}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres-dev-password}
+      POSTGRES_DB: postgres
+      <<: *db-passwords
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./deploy/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+    healthcheck:
+      # Проверка по TCP: во время initdb временный сервер слушает только
+      # unix-socket, поэтому успех возможен только после запуска init-databases.sh.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d users"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  auth-migrate:
+    image: migrate/migrate:v4.18.1
+    command:
+      - -path=/migrations
+      - -database=postgres://auth_service:${AUTH_DB_PASSWORD:-auth-dev-password}@postgres:5432/auth?sslmode=disable
+      - up
+    volumes:
+      - ./migrations/auth:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  user-migrate:
+    image: migrate/migrate:v4.18.1
+    command:
+      - -path=/migrations
+      - -database=postgres://user_service:${USER_DB_PASSWORD:-user-dev-password}@postgres:5432/users?sslmode=disable
+      - up
+    volumes:
+      - ./migrations/user:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-redis-dev-password}"]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep PONG"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis-dev-password}
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio-dev}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio-dev-password}
+    ports:
+      - "9000:9000" # сюда ведут presigned-ссылки на фото
+      - "9001:9001" # веб-консоль
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
+        mc mb --ignore-existing local/photos
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio-dev}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio-dev-password}
+    depends_on:
+      minio:
+        condition: service_healthy
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    mem_limit: 1g
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s' >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: internal/services/auth_service/Dockerfile
+    environment:
+      AUTH_POSTGRES_URL: postgres://auth_service:${AUTH_DB_PASSWORD:-auth-dev-password}@postgres:5432/auth?sslmode=disable
+      AUTH_REDIS_URL: redis://:${REDIS_PASSWORD:-redis-dev-password}@redis:6379/0
+      ACCESS_SECRET: ${ACCESS_SECRET:-dev-access-secret-change-me}
+      REFRESH_SECRET: ${REFRESH_SECRET:-dev-refresh-secret-change-me}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin-dev-password}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - ./internal/services/auth_service/configs/config.example.yaml:/app/configs/config.yaml:ro
+    ports:
+      - "8080:8080" # REST; gRPC 50051 остаётся внутри сети
+    depends_on:
+      auth-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  user-service:
+    build:
+      context: .
+      dockerfile: internal/services/user_service/Dockerfile
+    environment:
+      USER_POSTGRES_URL: postgres://user_service:${USER_DB_PASSWORD:-user-dev-password}@postgres:5432/users?sslmode=disable
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minio-dev}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio-dev-password}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - ./internal/services/user_service/configs/config.example.yaml:/app/configs/config.yaml:ro
+    ports:
+      - "8081:8081"
+    depends_on:
+      user-migrate:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+      elasticsearch:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+
+volumes:
+  postgres-data:
+  minio-data:
+  elasticsearch-data:
