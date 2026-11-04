@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package authpb;
 
-option go_package = "github.com/alexey-dobry/medical-service/internal/pkg/gen/auth/authpb";
+option go_package = "github.com/alexey-dobry/medical-service/internal/pkg/gen/auth;authpb";
 
 import "google/protobuf/empty.proto";
 
@@ -10,6 +10,7 @@ service Auth {
   rpc RegisterPatient (RegisterRequest) returns (RegisterResponse);
   rpc RegisterDoctor (RegisterRequest) returns (google.protobuf.Empty);
   rpc DeleteUser (DeleteUserRequest) returns (google.protobuf.Empty);
+  rpc ValidateAccessToken (ValidateAccessTokenRequest) returns (ValidateAccessTokenResponse);
 }
 
 message RegisterRequest {
@@ -26,4 +27,13 @@ message RegisterResponse {
 
 message DeleteUserRequest {
   string user_id = 1;
+}
+
+message ValidateAccessTokenRequest {
+  string token = 1;
+}
+
+message ValidateAccessTokenResponse {
+  string user_id = 1;
+  string role = 2;
 }

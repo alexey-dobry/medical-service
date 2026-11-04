@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package authpb;
+package userpb;
 
-option go_package = "github.com/alexey-dobry/medical-service/internal/pkg/gen/auth/authpb";
+option go_package = "github.com/alexey-dobry/medical-service/internal/pkg/gen/user;userpb";
 
 import "google/protobuf/empty.proto";
 
