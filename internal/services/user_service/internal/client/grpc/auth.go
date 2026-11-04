@@ -7,8 +7,9 @@ import (
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/client"
 )
 
-func (c *grpcClient) RegisterPatient(request client.RegisterRequest) (client.RegisterPatientResponse, error) {
-	ctx := context.Background()
+func (c *grpcClient) RegisterPatient(ctx context.Context, request client.RegisterRequest) (client.RegisterPatientResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
 
 	grpcRequest := pb.RegisterRequest{
 		UserId:   request.UserID,
@@ -28,8 +29,9 @@ func (c *grpcClient) RegisterPatient(request client.RegisterRequest) (client.Reg
 	}, nil
 }
 
-func (c *grpcClient) RegisterDoctor(request client.RegisterRequest) error {
-	ctx := context.Background()
+func (c *grpcClient) RegisterDoctor(ctx context.Context, request client.RegisterRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
 
 	grpcRequest := pb.RegisterRequest{
 		UserId:   request.UserID,
@@ -39,24 +41,29 @@ func (c *grpcClient) RegisterDoctor(request client.RegisterRequest) error {
 	}
 
 	_, err := c.Auth.RegisterDoctor(ctx, &grpcRequest)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-func (c *grpcClient) DeleteUser(request client.DeleteRequest) error {
-	ctx := context.Background()
+func (c *grpcClient) DeleteUser(ctx context.Context, request client.DeleteRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
 
 	grpcRequest := pb.DeleteUserRequest{
 		UserId: request.UserID,
 	}
 
 	_, err := c.Auth.DeleteUser(ctx, &grpcRequest)
+	return err
+}
+
+func (c *grpcClient) ValidateAccessToken(ctx context.Context, token string) (client.TokenInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
+
+	resp, err := c.Auth.ValidateAccessToken(ctx, &pb.ValidateAccessTokenRequest{Token: token})
 	if err != nil {
-		return err
+		return client.TokenInfo{}, err
 	}
 
-	return nil
+	return client.TokenInfo{UserID: resp.UserId, Role: resp.Role}, nil
 }
