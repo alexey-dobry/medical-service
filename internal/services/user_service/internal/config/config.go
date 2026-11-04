@@ -9,6 +9,7 @@ import (
 	"github.com/alexey-dobry/medical-service/internal/pkg/validator"
 	client "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/client/grpc"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/server/rest"
+	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/service"
 	store "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store/user"
 	"github.com/ilyakaznacheev/cleanenv"
 )
@@ -18,6 +19,8 @@ type Config struct {
 	REST   rest.Config   `yaml:"rest"`
 	Store  store.Config  `yaml:"store"`
 	Client client.Config `yaml:"client"`
+
+	Compensation service.RetryPolicy `yaml:"compensation"`
 }
 
 func MustLoad() Config {
