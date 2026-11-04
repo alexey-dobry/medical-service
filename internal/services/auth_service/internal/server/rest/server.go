@@ -3,8 +3,8 @@ package rest
 import (
 	"net"
 
+	"github.com/alexey-dobry/medical-service/internal/pkg/jwt"
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
-	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/jwt"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/repository"
 	"github.com/gofiber/fiber/v2"
 )
@@ -15,14 +15,16 @@ type RESTServer struct {
 	logger          logger.Logger
 	credentialsRepo repository.CredentialsRepository
 	blacklistRepo   repository.BlacklistRepository
-	jwtHandler      jwt.JWTHandler
+	jwtHandler      *jwt.Handler
+
+	secureCookies bool
 }
 
 func New(
 	logger logger.Logger,
 	credentialsRepo repository.CredentialsRepository,
 	blacklistRepo repository.BlacklistRepository,
-	jwtHandler jwt.JWTHandler,
+	jwtHandler *jwt.Handler,
 	cfg Config,
 ) *RESTServer {
 	fiberApp := fiber.New(fiber.Config{
@@ -34,10 +36,11 @@ func New(
 	s := &RESTServer{
 		fiberApp: fiberApp,
 
-		logger:          logger.WithFields("layer", "rest server api", "server"),
+		logger:          logger.WithFields("layer", "rest server"),
 		credentialsRepo: credentialsRepo,
 		blacklistRepo:   blacklistRepo,
 		jwtHandler:      jwtHandler,
+		secureCookies:   !cfg.InsecureCookies,
 	}
 
 	s.initRoutes()
