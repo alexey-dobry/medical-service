@@ -2,8 +2,7 @@ package model
 
 import "github.com/alexey-dobry/medical-service/internal/pkg/validator"
 
-// DoctorAdditionalData is a model
-// which stores additional data for User model if user has Doctor Role
+// DoctorAdditionalData хранит дополнительные данные пользователя с ролью врача.
 type DoctorAdditionalData struct {
 	UserID         string   `validate:"required,uuid"`
 	Specialty      string   `validate:"required,max=15"`
