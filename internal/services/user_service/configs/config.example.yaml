@@ -1,0 +1,51 @@
+# Работает как есть с docker-compose.yaml. Секреты здесь НЕ хранятся:
+#   USER_POSTGRES_URL                  - строка подключения с паролем
+#   MINIO_ACCESS_KEY, MINIO_SECRET_KEY - учётные данные объектного хранилища
+# Переменные окружения переопределяют значения ниже.
+
+logger:
+  dir: ./logs
+  log_targets: []
+
+rest:
+  port: 8081
+  read_timeout: 10s
+  write_timeout: 10s
+  idle_timeout: 60s
+  # Только локальный HTTP: снимает флаг Secure у cookie. За HTTPS держите false.
+  insecure_cookies: true
+  middleware_config:
+    cookie_name: accessToken
+
+store:
+  postgres:
+    url: postgres://user_service@postgres:5432/users?sslmode=disable
+    max_pool_size: 10
+    connection_attempts: 10
+    connection_retry_timeout: 2s
+  minio:
+    endpoint: minio:9000
+    # Хост для presigned-ссылок на фото; должен быть доступен клиенту.
+    public_endpoint: localhost:9000
+    bucket: photos
+    region: us-east-1
+    use_ssl: false
+    connection_attempts: 10
+    connection_retry_timeout: 2s
+    presigned_url_expiry: 1h
+  elasticsearch:
+    addresses:
+      - http://elasticsearch:9200
+    doctor_index: doctors
+    max_retries: 3
+
+client:
+  host: auth-service
+  port: "50051"
+  timeout: 5s
+
+compensation:
+  attempts: 5
+  initial_delay: 200ms
+  max_delay: 5s
+  timeout: 30s

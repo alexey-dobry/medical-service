@@ -11,9 +11,12 @@ import (
 
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger/zap"
+	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/client"
 	grpcClient "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/client/grpc"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/config"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/server/rest"
+	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/server/rest/middleware"
+	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/service"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store/user"
 )
@@ -26,7 +29,8 @@ type app struct {
 	RESTServer        *rest.RESTServer
 	RESTServerAddress string
 
-	store store.Store
+	store  store.Store
+	client client.Client
 
 	logger logger.Logger
 }
@@ -44,9 +48,16 @@ func New(cfg config.Config) App {
 		a.logger.Fatalf("Failed to create store instance: %s", err)
 	}
 
-	client := grpcClient.New(a.logger, cfg.Client)
+	a.client, err = grpcClient.New(a.logger, cfg.Client)
+	if err != nil {
+		a.logger.Fatalf("Failed to create auth client: %s", err)
+	}
 
-	a.RESTServer = rest.New(a.logger, a.store, client, cfg.REST)
+	tokenValidator := middleware.NewAuthServiceValidator(a.client)
+
+	registration := service.NewRegistration(a.client, a.store, a.logger, cfg.Compensation)
+
+	a.RESTServer = rest.New(a.logger, a.store, a.client, registration, tokenValidator, cfg.REST)
 
 	a.logger.Info("app was built")
 	return &a
@@ -66,13 +77,11 @@ func (a *app) Run(ctx context.Context) {
 
 	var wg sync.WaitGroup
 
-	// gRPC servers
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		a.logger.Infof("Starting internal grpc server at address %s...", a.RESTServerAddress)
+		a.logger.Infof("Starting rest server at address %s...", a.RESTServerAddress)
 		if err := a.RESTServer.Listener(restListener); err != nil {
 			select {
 			case <-ctx.Done():
@@ -97,10 +106,14 @@ func (a *app) Run(ctx context.Context) {
 	cancel()
 
 	if err := restListener.Close(); err != nil {
-		a.logger.Warnf("Public net listener closing ended with error: %s", err)
+		a.logger.Warnf("REST listener closing ended with error: %s", err)
 	}
 
 	wg.Wait()
+
+	if err := a.client.Close(); err != nil {
+		a.logger.Warnf("auth client closing ended with error: %s", err)
+	}
 
 	if err := a.store.Close(); err != nil {
 		a.logger.Warnf("store closing ended with error: %s", err)
