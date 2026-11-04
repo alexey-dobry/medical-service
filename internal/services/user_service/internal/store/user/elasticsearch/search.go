@@ -5,13 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model"
+	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store"
 	"github.com/google/uuid"
 )
 
-func (r *Repository) AddDoctor(doctorData model.DoctorSearchParams) error {
+func (r *Repository) AddDoctor(ctx context.Context, doctorData model.DoctorSearchParams) error {
 	doc := map[string]interface{}{
 		"id":          doctorData.ID,
 		"first_name":  doctorData.FirstName,
@@ -31,7 +33,7 @@ func (r *Repository) AddDoctor(doctorData model.DoctorSearchParams) error {
 		r.index,
 		bytes.NewReader(body),
 		r.db.Index.WithDocumentID(doctorData.ID),
-		r.db.Index.WithContext(context.Background()),
+		r.db.Index.WithContext(ctx),
 		r.db.Index.WithRefresh("true"),
 	)
 	if err != nil {
@@ -46,15 +48,11 @@ func (r *Repository) AddDoctor(doctorData model.DoctorSearchParams) error {
 	return nil
 }
 
-func (r *Repository) DeleteDoctor(ID uuid.UUID) error {
-	if strings.TrimSpace(ID.String()) == "" {
-		return fmt.Errorf("deleteDoctor: id must not be empty")
-	}
-
+func (r *Repository) DeleteDoctor(ctx context.Context, ID uuid.UUID) error {
 	res, err := r.db.Delete(
-		"doctors",
+		r.index,
 		ID.String(),
-		r.db.Delete.WithContext(context.Background()),
+		r.db.Delete.WithContext(ctx),
 		r.db.Delete.WithRefresh("true"),
 	)
 	if err != nil {
@@ -62,8 +60,8 @@ func (r *Repository) DeleteDoctor(ID uuid.UUID) error {
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode == 404 {
-		return fmt.Errorf("deleteDoctor: document with id %q not found", ID.String())
+	if res.StatusCode == http.StatusNotFound {
+		return store.ErrNotFound
 	}
 
 	if res.IsError() {
@@ -74,7 +72,7 @@ func (r *Repository) DeleteDoctor(ID uuid.UUID) error {
 
 }
 
-func (r *Repository) SearchDoctor(searchParams model.DoctorSearchParams) ([]uuid.UUID, error) {
+func (r *Repository) SearchDoctor(ctx context.Context, searchParams model.DoctorSearchParams) ([]uuid.UUID, error) {
 	query := buildSearchQuery(searchParams)
 	body, err := json.Marshal(query)
 	if err != nil {
@@ -84,7 +82,7 @@ func (r *Repository) SearchDoctor(searchParams model.DoctorSearchParams) ([]uuid
 	res, err := r.db.Search(
 		r.db.Search.WithIndex(r.index),
 		r.db.Search.WithBody(bytes.NewReader(body)),
-		r.db.Search.WithContext(context.Background()),
+		r.db.Search.WithContext(ctx),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("searchDoctor: search request: %w", err)
@@ -108,10 +106,6 @@ func (r *Repository) SearchDoctor(searchParams model.DoctorSearchParams) ([]uuid
 		return nil, fmt.Errorf("searchDoctor: decode response: %w", err)
 	}
 
-	if len(result.Hits.Hits) == 0 {
-		return nil, fmt.Errorf("searchDoctor: no results found")
-	}
-
 	ids := make([]uuid.UUID, 0, len(result.Hits.Hits))
 	for _, hit := range result.Hits.Hits {
 		id, err := uuid.Parse(hit.Source.ID)
@@ -124,12 +118,15 @@ func (r *Repository) SearchDoctor(searchParams model.DoctorSearchParams) ([]uuid
 	return ids, nil
 }
 
+// buildSearchQuery объединяет каждый заданный фильтр через AND (bool.must):
+// "specialty=cardiologist&sex=F" не должен возвращать всех женщин-врачей плюс
+// всех кардиологов. Текстовые поля используют нечёткое совпадение, ключевые — точные термы.
 func buildSearchQuery(p model.DoctorSearchParams) map[string]interface{} {
-	var should []map[string]interface{}
+	var must []map[string]interface{}
 
 	addTerm := func(field, value string) {
 		if strings.TrimSpace(value) != "" {
-			should = append(should, map[string]interface{}{
+			must = append(must, map[string]interface{}{
 				"term": map[string]interface{}{field: value},
 			})
 		}
@@ -137,7 +134,7 @@ func buildSearchQuery(p model.DoctorSearchParams) map[string]interface{} {
 
 	addMatch := func(field, value string) {
 		if strings.TrimSpace(value) != "" {
-			should = append(should, map[string]interface{}{
+			must = append(must, map[string]interface{}{
 				"match": map[string]interface{}{
 					field: map[string]interface{}{
 						"query":     value,
@@ -157,7 +154,7 @@ func buildSearchQuery(p model.DoctorSearchParams) map[string]interface{} {
 
 	for _, svc := range p.Services {
 		if strings.TrimSpace(svc) != "" {
-			should = append(should, map[string]interface{}{
+			must = append(must, map[string]interface{}{
 				"match": map[string]interface{}{
 					"services": map[string]interface{}{
 						"query":     svc,
@@ -168,7 +165,7 @@ func buildSearchQuery(p model.DoctorSearchParams) map[string]interface{} {
 		}
 	}
 
-	if len(should) == 0 {
+	if len(must) == 0 {
 		return map[string]interface{}{
 			"query": map[string]interface{}{
 				"match_all": map[string]interface{}{},
@@ -179,8 +176,7 @@ func buildSearchQuery(p model.DoctorSearchParams) map[string]interface{} {
 	return map[string]interface{}{
 		"query": map[string]interface{}{
 			"bool": map[string]interface{}{
-				"should":               should,
-				"minimum_should_match": 1,
+				"must": must,
 			},
 		},
 	}

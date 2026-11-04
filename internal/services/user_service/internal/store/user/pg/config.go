@@ -1,11 +1,8 @@
 package pg
 
+import "github.com/alexey-dobry/medical-service/internal/pkg/postgres"
+
 type Config struct {
-	MaxRetries   int    `validate:"required" yaml:"max_retries"`
-	RetryDelay   int    `validate:"required" yaml:"retry_delay"`
-	Port         int    `validate:"required" yaml:"port"`
-	Host         string `validate:"required" yaml:"host"`
-	User         string `validate:"required" yaml:"user"`
-	Password     string `validate:"required" yaml:"password"`
-	DatabaseName string `validate:"required" yaml:"database"`
+	URL                     string `validate:"required" yaml:"url" env:"USER_POSTGRES_URL"`
+	postgres.PostgresConfig `yaml:",inline"`
 }

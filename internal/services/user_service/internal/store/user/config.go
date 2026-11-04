@@ -7,7 +7,7 @@ import (
 )
 
 type Config struct {
-	pgConfig            pg.Config            `yaml:"pg_config"`
-	minioConfig         minio.Config         `yaml:"minio_config"`
-	elasticsearchConfig elasticsearch.Config `yaml:"elasticsearch_config"`
+	Postgres      pg.Config            `yaml:"postgres"`
+	Minio         minio.Config         `yaml:"minio"`
+	Elasticsearch elasticsearch.Config `yaml:"elasticsearch"`
 }

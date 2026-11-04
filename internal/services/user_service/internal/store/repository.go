@@ -1,6 +1,10 @@
 package store
 
+//go:generate mockgen -source=repository.go -destination=mocks/repository_mock.go -package=mocks
+//go:generate mockgen -source=store.go -destination=mocks/store_mock.go -package=mocks
+
 import (
+	"context"
 	"io"
 
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model"
@@ -8,37 +12,33 @@ import (
 )
 
 type UserRepository interface {
-	AddPatient(userData model.User) error
+	AddPatient(ctx context.Context, userData model.User) error
 
-	GetPatient(ID uuid.UUID) (model.User, error)
+	GetPatient(ctx context.Context, ID uuid.UUID) (model.User, error)
 
-	AddDoctor(userData model.User, doctorData model.DoctorAdditionalData) error
+	AddDoctor(ctx context.Context, userData model.User, doctorData model.DoctorAdditionalData) error
 
-	GetDoctor(ID uuid.UUID) (model.User, model.DoctorAdditionalData, error)
+	GetDoctor(ctx context.Context, ID uuid.UUID) (model.User, model.DoctorAdditionalData, error)
 
-	DeleteUser(ID uuid.UUID) error
+	DeleteUser(ctx context.Context, ID uuid.UUID) error
 
-	UpdateUser(ID uuid.UUID, data map[string]interface{}) error
-
-	Close() error
+	UpdateUser(ctx context.Context, ID uuid.UUID, data map[string]interface{}) error
 }
 
 type MetaRepository interface {
-	Create(photo model.Photo) error
+	Create(ctx context.Context, photo model.Photo) error
 
-	GetByID(ID uuid.UUID) (model.Photo, error)
+	GetByID(ctx context.Context, ID uuid.UUID) (model.Photo, error)
 
-	Delete(ID uuid.UUID) (string, error)
-
-	Close() error
+	DeleteByUserID(ctx context.Context, userID uuid.UUID) (string, error)
 }
 
 type SearchRepository interface {
-	AddDoctor(doctorData model.DoctorSearchParams) error
+	AddDoctor(ctx context.Context, doctorData model.DoctorSearchParams) error
 
-	SearchDoctor(searchParams model.DoctorSearchParams) ([]uuid.UUID, error)
+	SearchDoctor(ctx context.Context, searchParams model.DoctorSearchParams) ([]uuid.UUID, error)
 
-	DeleteDoctor(ID uuid.UUID) error
+	DeleteDoctor(ctx context.Context, ID uuid.UUID) error
 
 	Close() error
 }

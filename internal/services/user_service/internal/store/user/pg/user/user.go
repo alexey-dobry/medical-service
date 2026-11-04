@@ -1,45 +1,60 @@
 package user
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model"
+	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
-func (r *Repository) AddPatient(userData model.User) error {
-	_, err := r.db.Exec(
-		"INSERT INTO user (first_name,middle_name,last_name,phone,email,sex,birth_date) VALUES ($1,$2,$3,$4,$5,$6,$7)",
-		userData.FirstName,
-		userData.MiddleName,
-		userData.LastName,
-		userData.Phone,
-		userData.Email,
-		userData.Sex,
-		userData.BirthDate,
-	)
-	return err
+const insertUserQuery = `INSERT INTO users (id,first_name,middle_name,last_name,phone,email,sex,birth_date,photo_id)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
+
+func userArgs(u model.User) []any {
+	var photoID *string
+	if u.PhotoID != "" {
+		photoID = &u.PhotoID
+	}
+
+	return []any{u.ID, u.FirstName, u.MiddleName, u.LastName, u.Phone, u.Email, u.Sex, u.BirthDate, photoID}
 }
 
-func (r *Repository) GetPatient(ID uuid.UUID) (model.User, error) {
-	row := r.db.QueryRow("SELECT first_name,middle_name,last_name,phone,email,sex FROM user WHERE id = $1", ID)
+func (r *Repository) AddPatient(ctx context.Context, userData model.User) error {
+	if _, err := r.db.Pool.Exec(ctx, insertUserQuery, userArgs(userData)...); err != nil {
+		return fmt.Errorf("userRepository - AddPatient(): %w", mapError(err))
+	}
+
+	return nil
+}
+
+func (r *Repository) GetPatient(ctx context.Context, ID uuid.UUID) (model.User, error) {
+	row := r.db.Pool.QueryRow(ctx,
+		`SELECT id,first_name,middle_name,last_name,phone,email,sex,birth_date,COALESCE(photo_id::text,'')
+		FROM users WHERE id = $1`, ID)
 
 	var u model.User
-	err := row.Scan(&u.FirstName, &u.MiddleName, &u.LastName, &u.Phone, &u.Email, &u.Sex)
-	if err != nil {
-		return model.User{}, err
+	err := row.Scan(&u.ID, &u.FirstName, &u.MiddleName, &u.LastName, &u.Phone, &u.Email, &u.Sex, &u.BirthDate, &u.PhotoID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return model.User{}, store.ErrNotFound
+	} else if err != nil {
+		return model.User{}, fmt.Errorf("userRepository - GetPatient(): %w", err)
 	}
 
 	return u, nil
 }
 
-func (r *Repository) UpdateUser(ID uuid.UUID, updateData map[string]interface{}) error {
+func (r *Repository) UpdateUser(ctx context.Context, ID uuid.UUID, updateData map[string]interface{}) error {
 	if len(updateData) == 0 {
 		return nil
 	}
 
+	// Имена колонок нельзя передать параметром — подставляем только разрешённые поля.
 	allowedFields := map[string]bool{
 		"middle_name": true,
 		"first_name":  true,
@@ -51,7 +66,7 @@ func (r *Repository) UpdateUser(ID uuid.UUID, updateData map[string]interface{})
 	keys := make([]string, 0, len(updateData))
 	for k := range updateData {
 		if !allowedFields[k] {
-			return fmt.Errorf("field %q is not allowed for update", k)
+			return fmt.Errorf("%w: %q", store.ErrInvalidField, k)
 		}
 		keys = append(keys, k)
 	}
@@ -73,27 +88,22 @@ func (r *Repository) UpdateUser(ID uuid.UUID, updateData map[string]interface{})
 		len(args),
 	)
 
-	result, err := r.db.Exec(query, args...)
+	result, err := r.db.Pool.Exec(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("failed to update user: %w", err)
+		return fmt.Errorf("userRepository - UpdateUser(): %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("user with id %s not found", ID)
+	if result.RowsAffected() == 0 {
+		return store.ErrNotFound
 	}
 
 	return nil
 }
 
-func (r *Repository) DeleteUser(ID uuid.UUID) error {
-	_, err := r.db.Exec("DELETE FROM user WHERE id = $1", ID)
-	if err != nil {
-		return err
+func (r *Repository) DeleteUser(ctx context.Context, ID uuid.UUID) error {
+	// doctors и photo_meta уйдут каскадом (ON DELETE CASCADE).
+	if _, err := r.db.Pool.Exec(ctx, "DELETE FROM users WHERE id = $1", ID); err != nil {
+		return fmt.Errorf("userRepository - DeleteUser(): %w", err)
 	}
 
 	return nil

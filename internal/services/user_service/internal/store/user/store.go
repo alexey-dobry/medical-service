@@ -3,13 +3,13 @@ package user
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
+	"github.com/alexey-dobry/medical-service/internal/pkg/postgres"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store"
 	el "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store/user/elasticsearch"
@@ -23,6 +23,8 @@ import (
 )
 
 type Store struct {
+	postgres *postgres.Postgres
+
 	metaRepository   store.MetaRepository
 	userRepository   store.UserRepository
 	searchRepository store.SearchRepository
@@ -32,17 +34,17 @@ type Store struct {
 func New(cfg Config, logger logger.Logger) (store.Store, error) {
 	logger = logger.WithFields("layer", "store")
 
-	pgDB, err := connectToPostgres(cfg.pgConfig, logger)
+	pgDB, err := connectToPostgres(cfg.Postgres, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
 	}
 
-	mnDB, err := connectToMinio(cfg.minioConfig, logger)
+	mnDB, mnPresigner, err := connectToMinio(cfg.Minio, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to minio: %w", err)
 	}
 
-	elDB, err := connectToElastic(cfg.elasticsearchConfig, logger)
+	elDB, err := connectToElastic(cfg.Elasticsearch, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to elasticsearch: %w", err)
 	}
@@ -50,11 +52,12 @@ func New(cfg Config, logger logger.Logger) (store.Store, error) {
 	metaRepository := meta.New(pgDB, logger)
 	userRepository := user.New(pgDB, logger)
 
-	photosRepository := mn.New(mnDB, logger, cfg.minioConfig.Bucket)
+	photosRepository := mn.New(mnDB, mnPresigner, logger, cfg.Minio.Bucket, cfg.Minio.URLExpiry)
 
-	searchRepository := el.New(elDB, logger, cfg.elasticsearchConfig.DoctorIndex)
+	searchRepository := el.New(elDB, logger, cfg.Elasticsearch.DoctorIndex)
 
 	return &Store{
+		postgres:         pgDB,
 		metaRepository:   metaRepository,
 		userRepository:   userRepository,
 		photosRepository: photosRepository,
@@ -79,48 +82,21 @@ func (s *Store) Photos() store.PhotosRepository {
 }
 
 func (s *Store) Close() error {
-	err := s.userRepository.Close()
-	if err != nil {
-		return err
-	}
+	s.postgres.Close()
 
-	err = s.metaRepository.Close()
-	if err != nil {
-		return err
-	}
-
-	err = s.searchRepository.Close()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.searchRepository.Close()
 }
 
-func connectToPostgres(cfg pg.Config, logger logger.Logger) (*sql.DB, error) {
+func connectToPostgres(cfg pg.Config, logger logger.Logger) (*postgres.Postgres, error) {
 	logger = logger.WithFields("layer", "pg_store")
 
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", cfg.Host, cfg.Port, cfg.User, cfg.Password, cfg.DatabaseName)
-
-	var db *sql.DB
-	var err error
-	for range cfg.MaxRetries {
-		db, err = sql.Open("pgx", dsn)
-		if err == nil {
-			break
-		}
-
-		logger.Warnf("connect retry: %w", err)
-
-		time.Sleep(time.Second * time.Duration(cfg.RetryDelay))
-	}
+	db, err := postgres.New(cfg.URL,
+		postgres.MaxPoolSize(cfg.MaxPoolSize),
+		postgres.ConnAttempts(cfg.ConnAttempts),
+		postgres.ConnTimeout(cfg.ConnTimeout),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to establish connection: %w", err)
-	}
-
-	err = db.Ping()
-	if err != nil {
-		return nil, fmt.Errorf("failed to ping: %w", err)
 	}
 
 	logger.Info("connection established")
@@ -128,58 +104,68 @@ func connectToPostgres(cfg pg.Config, logger logger.Logger) (*sql.DB, error) {
 	return db, nil
 }
 
-func connectToMinio(cfg mn.Config, logger logger.Logger) (*minio.Client, error) {
+// connectToMinio возвращает клиент для операций с хранилищем и
+// второй клиент, который только подписывает URL для публичного эндпоинта.
+func connectToMinio(cfg mn.Config, logger logger.Logger) (*minio.Client, *minio.Client, error) {
 	logger = logger.WithFields("layer", "minio_store")
 
-	dsn := fmt.Sprintf("%s:%s", cfg.Host, cfg.Port)
+	opts := func() *minio.Options {
+		return &minio.Options{
+			Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
+			Secure: cfg.UseSSL,
+			Region: cfg.Region,
+		}
+	}
 
-	accessKey := cfg.AccessKey
-	secretAccessKey := cfg.SecretKey
-	useSSL := false
+	db, err := minio.New(cfg.Endpoint, opts())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create client: %w", err)
+	}
 
-	var db *minio.Client
-	var err error
-	for range cfg.MaxRetries {
-		db, err = minio.New(dsn, &minio.Options{
-			Creds:  credentials.NewStaticV4(accessKey, secretAccessKey, ""),
-			Secure: useSSL,
-		})
+	publicEndpoint := cfg.PublicEndpoint
+	if publicEndpoint == "" {
+		publicEndpoint = cfg.Endpoint
+	}
+
+	presigner, err := minio.New(publicEndpoint, opts())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create presign client: %w", err)
+	}
+
+	// minio.New не подключается; BucketExists — это первый реальный запрос,
+	// поэтому именно его нужно повторять, пока MinIO запускается.
+	var exists bool
+	for attempt := 1; attempt <= cfg.ConnAttempts; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.ConnTimeout)
+		exists, err = db.BucketExists(ctx, cfg.Bucket)
+		cancel()
 		if err == nil {
 			break
 		}
 
-		logger.Warnf("connect retry: %w", err)
+		logger.Warnf("connect retry, attempts left %d: %s", cfg.ConnAttempts-attempt, err)
 
-		time.Sleep(time.Second * time.Duration(cfg.RetryDelay))
+		time.Sleep(cfg.ConnTimeout)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to establish connection: %w", err)
-	}
-
-	exists, err := db.BucketExists(context.Background(), cfg.Bucket)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if bucket exist: %w", err)
+		return nil, nil, fmt.Errorf("failed to check if bucket exist: %w", err)
 	}
 
 	if !exists {
-		if err := db.MakeBucket(context.Background(), cfg.Bucket, minio.MakeBucketOptions{}); err != nil {
-			return nil, fmt.Errorf("failed to create bucket: %w", err)
+		if err := db.MakeBucket(context.Background(), cfg.Bucket, minio.MakeBucketOptions{Region: cfg.Region}); err != nil {
+			return nil, nil, fmt.Errorf("failed to create bucket: %w", err)
 		}
 	}
 
 	logger.Info("connection established")
 
-	return db, nil
+	return db, presigner, nil
 }
 
 func connectToElastic(cfg el.Config, logger logger.Logger) (*elasticsearch.Client, error) {
 	logger = logger.WithFields("layer", "elasticsearch_store")
 
 	maxRetries := cfg.MaxRetries
-	if maxRetries == 0 {
-		maxRetries = 3
-	}
-
 	esCfg := elasticsearch.Config{
 		Addresses:  cfg.Addresses,
 		Username:   cfg.Username,
@@ -208,7 +194,7 @@ func connectToElastic(cfg el.Config, logger logger.Logger) (*elasticsearch.Clien
 		return nil, fmt.Errorf("ping error [%s]", res.Status())
 	}
 
-	err = initDoctorsIndex(client)
+	err = initDoctorsIndex(client, cfg.DoctorIndex)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init database: %w", err)
 	}
@@ -218,11 +204,11 @@ func connectToElastic(cfg el.Config, logger logger.Logger) (*elasticsearch.Clien
 	return client, nil
 }
 
-func initDoctorsIndex(client *elasticsearch.Client) error {
+func initDoctorsIndex(client *elasticsearch.Client, index string) error {
 	ctx := context.Background()
 
 	existsRes, err := client.Indices.Exists(
-		[]string{"doctors"},
+		[]string{index},
 		client.Indices.Exists.WithContext(ctx),
 	)
 	if err != nil {
@@ -244,7 +230,7 @@ func initDoctorsIndex(client *elasticsearch.Client) error {
 	}
 
 	createRes, err := client.Indices.Create(
-		"doctors",
+		index,
 		client.Indices.Create.WithBody(bytes.NewReader(mappingBody)),
 		client.Indices.Create.WithContext(ctx),
 	)
