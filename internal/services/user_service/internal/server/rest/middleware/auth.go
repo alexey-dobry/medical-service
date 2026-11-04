@@ -1,16 +1,35 @@
 package middleware
 
 import (
+	"context"
+	"errors"
+
+	"github.com/alexey-dobry/medical-service/internal/pkg/model"
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+)
+
+var (
+	ErrInvalidToken = errors.New("invalid token")
+	ErrNoIdentity   = errors.New("no identity in request context")
 )
 
 type Config struct {
-	Secret     []byte
-	CookieName string
+	CookieName string `yaml:"cookie_name" env-default:"accessToken"`
 }
 
-func ValidateJWT(cfg Config) fiber.Handler {
+type Identity struct {
+	UserID uuid.UUID
+	Role   model.Role
+}
+
+type TokenValidator interface {
+	ValidateAccessToken(ctx context.Context, token string) (Identity, error)
+}
+
+type identityKey struct{}
+
+func ValidateJWT(cfg Config, validator TokenValidator) fiber.Handler {
 	if cfg.CookieName == "" {
 		cfg.CookieName = "accessToken"
 	}
@@ -23,25 +42,49 @@ func ValidateJWT(cfg Config) fiber.Handler {
 			})
 		}
 
-		token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
-			return cfg.Secret, nil
-		})
-
-		if err != nil {
+		identity, err := validator.ValidateAccessToken(c.UserContext(), tokenString)
+		if errors.Is(err, ErrInvalidToken) {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "invalid or expired token",
 			})
-		}
-
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok || !token.Valid {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "invalid token claims",
+		} else if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "failed to validate token",
 			})
 		}
 
-		c.Locals("claims", claims)
+		c.Locals(identityKey{}, identity)
 
 		return c.Next()
+	}
+}
+
+func IdentityFrom(c *fiber.Ctx) (Identity, error) {
+	identity, ok := c.Locals(identityKey{}).(Identity)
+	if !ok {
+		return Identity{}, ErrNoIdentity
+	}
+
+	return identity, nil
+}
+
+func RequireRole(roles ...model.Role) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		identity, err := IdentityFrom(c)
+		if err != nil {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "unauthenticated",
+			})
+		}
+
+		for _, role := range roles {
+			if identity.Role == role {
+				return c.Next()
+			}
+		}
+
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "insufficient role",
+		})
 	}
 }

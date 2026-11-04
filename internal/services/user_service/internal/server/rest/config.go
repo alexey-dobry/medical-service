@@ -12,4 +12,5 @@ type Config struct {
 	WriteTimeout     time.Duration     `validate:"required" yaml:"write_timeout"`
 	IdleTimeout      time.Duration     `validate:"required" yaml:"idle_timeout"`
 	MiddlewareConfig middleware.Config `validate:"required" yaml:"middleware_config"`
+	InsecureCookies  bool              `yaml:"insecure_cookies"`
 }
