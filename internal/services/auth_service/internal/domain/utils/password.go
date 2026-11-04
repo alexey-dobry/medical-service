@@ -11,3 +11,17 @@ func CheckPasswordHash(password, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }
+
+var dummyHash = mustHash("dummy-password-for-timing-equalization")
+
+func SimulatePasswordCheck(password string) {
+	CheckPasswordHash(password, dummyHash)
+}
+
+func mustHash(password string) string {
+	hash, err := HashPassword(password)
+	if err != nil {
+		panic(err)
+	}
+	return hash
+}
