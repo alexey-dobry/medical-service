@@ -1,9 +1,8 @@
 package credentials
 
-import "time"
+import "github.com/alexey-dobry/medical-service/internal/pkg/postgres"
 
-type PostgresConfig struct {
-	MaxPoolSize  int           `validate:"required,gte=1" yaml:"max_pool_size"`
-	ConnAttempts int           `validate:"required,gte=1" yaml:"connection_attempts"`
-	ConnTimeout  time.Duration `validate:"required" yaml:"connection_retry_timeout"`
+type Config struct {
+	URL                     string `validate:"required" yaml:"url" env:"AUTH_POSTGRES_URL"`
+	postgres.PostgresConfig `yaml:",inline"`
 }

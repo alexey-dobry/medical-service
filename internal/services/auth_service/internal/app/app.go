@@ -8,11 +8,16 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
+	"github.com/alexey-dobry/medical-service/internal/pkg/jwt"
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger/zap"
+	"github.com/alexey-dobry/medical-service/internal/pkg/postgres"
+	"github.com/alexey-dobry/medical-service/internal/pkg/redis"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/config"
-	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/jwt"
+	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/repository/blacklist"
+	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/repository/credentials"
 	authrpc "github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/server/grpc"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/server/rest"
 	"google.golang.org/grpc"
@@ -28,7 +33,8 @@ type app struct {
 	GRPCServerAddress string
 	RESTServerAddress string
 
-	store store.Store
+	postgres *postgres.Postgres
+	redis    *redis.Redis
 
 	logger logger.Logger
 }
@@ -42,18 +48,46 @@ func New(cfg config.Config) App {
 	a.GRPCServerAddress = fmt.Sprintf(":%d", cfg.GRPC.Port)
 	a.RESTServerAddress = fmt.Sprintf(":%d", cfg.REST.Port)
 
-	a.store, err = store.New(a.logger, cfg.Store)
+	pgCfg := cfg.CredentialsRepository
+	a.postgres, err = postgres.New(pgCfg.URL,
+		postgres.MaxPoolSize(pgCfg.MaxPoolSize),
+		postgres.ConnAttempts(pgCfg.ConnAttempts),
+		postgres.ConnTimeout(pgCfg.ConnTimeout),
+	)
 	if err != nil {
-		a.logger.Fatalf("Failed to create store instance: %s", err)
+		a.logger.Fatalf("Failed to connect to postgres: %s", err)
 	}
 
-	jwtHandler, err := jwt.NewHandler(cfg.JWT)
+	rdCfg := cfg.BlacklistRepository
+	a.redis, err = redis.New(rdCfg.URL,
+		redis.MaxCons(rdCfg.MaxCons),
+		redis.ConnAttempts(rdCfg.ConnAttempts),
+		redis.ConnTimeout(rdCfg.ConnTimeout),
+	)
+	if err != nil {
+		a.logger.Fatalf("Failed to connect to redis: %s", err)
+	}
+
+	credentialsRepo := credentials.NewCredentialsRepository(a.postgres)
+	blacklistRepo := blacklist.NewBlacklistRepository(a.redis)
+
+	bootstrapCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	created, err := ensureAdmin(bootstrapCtx, credentialsRepo, cfg.Admin)
+	cancel()
+	if err != nil {
+		a.logger.Fatalf("Failed to bootstrap admin: %s", err)
+	}
+	if created {
+		a.logger.Infof("Admin account %s created", cfg.Admin.Email)
+	}
+
+	jwtHandler, err := jwt.New(cfg.JWT)
 	if err != nil {
 		a.logger.Fatalf("Failed to create jwt handler: %s", err)
 	}
 
-	a.GRPCServer = authrpc.New(a.logger, a.store.Credentials(), jwtHandler)
-	a.RESTServer = rest.New(a.logger, a.store, jwtHandler, cfg.REST)
+	a.GRPCServer = authrpc.New(a.logger, credentialsRepo, blacklistRepo, jwtHandler)
+	a.RESTServer = rest.New(a.logger, credentialsRepo, blacklistRepo, jwtHandler, cfg.REST)
 
 	a.logger.Info("app was built")
 	return &a
@@ -78,12 +112,11 @@ func (a *app) Run(ctx context.Context) {
 
 	var wg sync.WaitGroup
 
-	// gRPC servers
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		a.logger.Infof("Starting public grpc server at address %s...", a.GRPCServerAddress)
+		a.logger.Infof("Starting gRPC server at address %s...", a.GRPCServerAddress)
 		if err := a.GRPCServer.Serve(grpcListener); err != nil {
 			select {
 			case <-ctx.Done():
@@ -99,7 +132,7 @@ func (a *app) Run(ctx context.Context) {
 	go func() {
 		defer wg.Done()
 
-		a.logger.Infof("Starting internal grpc server at address %s...", a.RESTServerAddress)
+		a.logger.Infof("Starting REST server at address %s...", a.RESTServerAddress)
 		if err := a.RESTServer.Listener(restListener); err != nil {
 			select {
 			case <-ctx.Done():
@@ -123,18 +156,17 @@ func (a *app) Run(ctx context.Context) {
 
 	cancel()
 	if err := grpcListener.Close(); err != nil {
-		a.logger.Warnf("Internal net listener closing ended with error: %s", err)
+		a.logger.Warnf("gRPC listener closing ended with error: %s", err)
 	}
 
 	if err := restListener.Close(); err != nil {
-		a.logger.Warnf("Public net listener closing ended with error: %s", err)
+		a.logger.Warnf("REST listener closing ended with error: %s", err)
 	}
 
 	wg.Wait()
 
-	if err := a.store.Close(); err != nil {
-		a.logger.Warnf("store closing ended with error: %s", err)
-	}
+	a.postgres.Close()
+	a.redis.Close()
 
 	a.logger.Info("app was gracefully shutdown")
 }

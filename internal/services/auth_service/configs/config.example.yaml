@@ -1,31 +1,36 @@
+# Работает как есть с docker-compose.yaml. Секреты здесь НЕ хранятся:
+#   AUTH_POSTGRES_URL, AUTH_REDIS_URL  - строки подключения с паролями
+#   ACCESS_SECRET, REFRESH_SECRET      - секреты подписи JWT
+#   ADMIN_EMAIL, ADMIN_PASSWORD        - необязательный bootstrap-администратор
+# Переменные окружения переопределяют значения ниже.
+
 logger:
   dir: ./logs
-  log_targets:
+  log_targets: []
 
 grpc:
   port: 50051
 
 rest:
   port: 8080
-  read_timeout: "4min"
-  write_timeout: "4min"
-  idle_timeout: "4min"
+  read_timeout: 10s
+  write_timeout: 10s
+  idle_timeout: 60s
+  # Только для локального HTTP: снимает флаг Secure у cookie. Держите false за HTTPS.
+  insecure_cookies: true
 
-store:
-  pg_config:
-    port: 5432
-    host: auth-postgres
-    user: pq_user
-    password: superpass
-    database: postgres
-  rd_config:
-    port: 5431
-    host: auth-redis
-    user: default
-    password: 1
-    database: 1
+postgres:
+  url: postgres://auth_service@postgres:5432/auth?sslmode=disable
+  max_pool_size: 10
+  connection_attempts: 10
+  connection_retry_timeout: 2s
+
+redis:
+  url: redis://redis:6379/0
+  max_connections: 20
+  connection_attempts: 5
+  connection_retry_timeout: 1s
 
 jwt:
-  ttl:
-    access-ttl: "2h"
-    refresh-ttl: "24h"
+  access-ttl: 15m
+  refresh-ttl: 168h

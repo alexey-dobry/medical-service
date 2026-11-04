@@ -1,9 +1,8 @@
 package blacklist
 
-import "time"
+import "github.com/alexey-dobry/medical-service/internal/pkg/redis"
 
-type RedisConfig struct {
-	MaxCons      int           `validate:"required,gte=0" yaml:"max_connections"`
-	ConnAttempts int           `validate:"required,gte=1" yaml:"connection_attempts"`
-	ConnTimeout  time.Duration `validate:"required" yaml:"connection_retry_timeout"`
+type Config struct {
+	URL               string `validate:"required" yaml:"url" env:"AUTH_REDIS_URL"`
+	redis.RedisConfig `yaml:",inline"`
 }

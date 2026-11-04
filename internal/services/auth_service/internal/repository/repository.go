@@ -1,28 +1,31 @@
 package repository
 
+//go:generate mockgen -source=repository.go -destination=mocks/repository_mock.go -package=mocks
+
 import (
+	"context"
 	"time"
 
-	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/entity"
+	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/domain/model"
 	"github.com/google/uuid"
 )
 
 type CredentialsRepository interface {
-	Add(userCredentials entity.Credentials) error
+	Add(ctx context.Context, userCredentials model.Credentials) error
 
-	GetOneByMail(email string) (entity.Credentials, error)
+	GetOneByMail(ctx context.Context, email string) (model.Credentials, error)
 
-	GetOneByID(userID uuid.UUID) (entity.Credentials, error)
+	GetOneByID(ctx context.Context, userID uuid.UUID) (model.Credentials, error)
 
-	Delete(id uuid.UUID) error
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type BlacklistRepository interface {
-	BlacklistAccessToken(jti string, expiresIn time.Duration) error
+	BlacklistAccessToken(ctx context.Context, jti string, expiresIn time.Duration) error
 
-	IsAccessTokenBlacklisted(jti string) (bool, error)
+	IsAccessTokenBlacklisted(ctx context.Context, jti string) (bool, error)
 
-	StoreLogoutSession(jti string, expiresIn time.Duration) error
+	StoreLogoutSession(ctx context.Context, jti string, expiresIn time.Duration) error
 
-	IsSessionLoggedOut(jti string) (bool, error)
+	IsSessionLoggedOut(ctx context.Context, jti string) (bool, error)
 }
