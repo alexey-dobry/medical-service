@@ -33,6 +33,9 @@ test:
 test-integration:
 	cd tests && go test -tags=integration -count=1 -v ./...
 
+lint:
+	@for m in $(MODULES); do echo "==> $$m"; (cd $$m && golangci-lint run ./...) || exit 1; done
+
 ## proto: regenerate gRPC code (needs protoc, protoc-gen-go, protoc-gen-go-grpc)
 proto:
 	protoc -I $(PROTO_DIR) \
