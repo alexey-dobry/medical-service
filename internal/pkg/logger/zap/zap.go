@@ -42,7 +42,7 @@ func NewLogger(cfg Config) logger.Logger {
 	logPath := filepath.Join(dir, "main.log")
 	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600) //nolint:gosec // no injection, logPath comes from .env
 	if err != nil {
-		log.Fatalf("error opening log file(%s): %s", logPath, err) //nolint:gosec // no injection, logFile comes from logPath which comes from .env
+		log.Fatalf("error opening log file(%s): %s", logPath, err)
 	}
 
 	var zcfg zapcore.EncoderConfig
