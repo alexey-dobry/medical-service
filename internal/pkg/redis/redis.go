@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -20,6 +21,8 @@ type Redis struct {
 
 	Client *redis.Client
 }
+
+func (r *Redis) Ping(ctx context.Context) error { return r.Client.Ping(ctx).Err() }
 
 func New(url string, opts ...Option) (*Redis, error) {
 	rd := &Redis{

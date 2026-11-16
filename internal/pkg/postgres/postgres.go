@@ -25,6 +25,8 @@ type Postgres struct {
 	Pool    *pgxpool.Pool
 }
 
+func (p *Postgres) Ping(ctx context.Context) error { return p.Pool.Ping(ctx) }
+
 func New(url string, opts ...Option) (*Postgres, error) {
 	pg := &Postgres{
 		maxPoolSize:  _defaultMaxPoolSize,

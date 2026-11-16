@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alexey-dobry/medical-service/internal/pkg/health"
 	"github.com/alexey-dobry/medical-service/internal/pkg/jwt"
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger/zap"
@@ -23,6 +24,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+const shutdownDelay = time.Second * 5
+
 type App interface {
 	Run(context.Context)
 }
@@ -35,6 +38,7 @@ type app struct {
 
 	postgres *postgres.Postgres
 	redis    *redis.Redis
+	health   *health.Checker
 
 	logger logger.Logger
 }
@@ -42,6 +46,13 @@ type app struct {
 func New(cfg config.Config) App {
 	var a app
 	var err error
+
+	a.health = health.New(2*time.Second,
+		health.Check{Name: "postgres", Critical: true, Fn: a.postgres.Ping},
+		health.Check{Name: "redis", Critical: true, Fn: a.redis.Ping},
+	)
+
+	a.health.SetReady(true)
 
 	a.logger = zap.NewLogger(cfg.Logger).WithFields("layer", "app")
 
@@ -87,7 +98,7 @@ func New(cfg config.Config) App {
 	}
 
 	a.GRPCServer = authrpc.New(a.logger, credentialsRepo, blacklistRepo, jwtHandler)
-	a.RESTServer = rest.New(a.logger, credentialsRepo, blacklistRepo, jwtHandler, cfg.REST)
+	a.RESTServer = rest.New(a.logger, credentialsRepo, blacklistRepo, jwtHandler, a.health, cfg.REST)
 
 	a.logger.Info("app was built")
 	return &a
@@ -165,6 +176,8 @@ func (a *app) Run(ctx context.Context) {
 
 	wg.Wait()
 
+	a.health.SetReady(false)
+	time.Sleep(shutdownDelay)
 	a.postgres.Close()
 	a.redis.Close()
 

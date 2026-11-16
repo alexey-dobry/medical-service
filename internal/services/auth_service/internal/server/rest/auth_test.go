@@ -39,7 +39,7 @@ func newEnv(t *testing.T) *env {
 		blacklist:   mocks.NewMockBlacklistRepository(ctrl),
 		jwt:         testutil.JWT(t),
 	}
-	e.server = New(logger.Nop(), e.credentials, e.blacklist, e.jwt, Config{
+	e.server = New(logger.Nop(), e.credentials, e.blacklist, e.jwt, nil, Config{
 		ReadTimeout:  time.Second,
 		WriteTimeout: time.Second,
 		IdleTimeout:  time.Second,

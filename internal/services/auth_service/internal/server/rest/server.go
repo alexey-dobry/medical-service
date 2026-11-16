@@ -3,6 +3,7 @@ package rest
 import (
 	"net"
 
+	"github.com/alexey-dobry/medical-service/internal/pkg/health"
 	"github.com/alexey-dobry/medical-service/internal/pkg/jwt"
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 	"github.com/alexey-dobry/medical-service/internal/services/auth_service/internal/repository"
@@ -16,6 +17,7 @@ type RESTServer struct {
 	credentialsRepo repository.CredentialsRepository
 	blacklistRepo   repository.BlacklistRepository
 	jwtHandler      *jwt.Handler
+	healthChecker   *health.Checker
 
 	secureCookies bool
 }
@@ -25,6 +27,7 @@ func New(
 	credentialsRepo repository.CredentialsRepository,
 	blacklistRepo repository.BlacklistRepository,
 	jwtHandler *jwt.Handler,
+	health *health.Checker,
 	cfg Config,
 ) *RESTServer {
 	fiberApp := fiber.New(fiber.Config{
@@ -40,6 +43,7 @@ func New(
 		credentialsRepo: credentialsRepo,
 		blacklistRepo:   blacklistRepo,
 		jwtHandler:      jwtHandler,
+		healthChecker:   health,
 		secureCookies:   !cfg.InsecureCookies,
 	}
 
