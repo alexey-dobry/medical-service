@@ -40,9 +40,9 @@ func NewLogger(cfg Config) logger.Logger {
 	}
 
 	logPath := filepath.Join(dir, "main.log")
-	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600) //nolint:gosec
 	if err != nil {
-		log.Fatalf("error opening log file(%s): %s", logPath, err) //nolint:gosec
+		log.Fatalf("error opening log file(%s): %s", logPath, err) //nolint:all
 	}
 
 	var zcfg zapcore.EncoderConfig
