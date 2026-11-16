@@ -48,6 +48,6 @@ func New(url string, opts ...Option) (*Redis, error) {
 
 func (r *Redis) Close() {
 	if r.Client != nil {
-		r.Client.Close() //nolint:all
+		r.Client.Close() //nolint:all // no need to check for errors when closing client
 	}
 }
