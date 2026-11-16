@@ -8,12 +8,23 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - internal/pkg
+          - internal/services/auth_service
+          - internal/services/user_service
+    defaults:
+      run:
+        working-directory: ${{matrix.module}}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.work
-      - name: Build auth service
-        working-directory: internal/services/auth_service
-        run: go build ./...
+          cache-dependency-path: "**/go.sum"
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test -race -count=1 ./...
         
