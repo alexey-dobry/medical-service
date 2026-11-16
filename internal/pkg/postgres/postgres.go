@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -75,10 +74,4 @@ func (p *Postgres) Close() {
 	if p.Pool != nil {
 		p.Pool.Close()
 	}
-}
-
-func safeIntToInt32(v int) int32 {
-	clamped := v & math.MaxInt32
-
-	return int32(clamped)
 }

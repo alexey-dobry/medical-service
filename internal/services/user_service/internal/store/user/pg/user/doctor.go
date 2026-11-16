@@ -17,7 +17,7 @@ func (r *Repository) AddDoctor(ctx context.Context, userData model.User, doctorD
 		return fmt.Errorf("userRepository - AddDoctor() - begin: %w", err)
 	}
 	// После успешного Commit Rollback ничего не делает.
-	defer func() { _ = tx.Rollback(ctx) }() //nolint:errcheck // ошибка rollback не важна ни после commit, ни после предыдущей ошибки
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	if _, err = tx.Exec(ctx, insertUserQuery, userArgs(userData)...); err != nil {
 		return fmt.Errorf("userRepository - AddDoctor() - insert user: %w", mapError(err))

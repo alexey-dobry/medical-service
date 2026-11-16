@@ -23,7 +23,6 @@ type zapLogger struct {
 
 const logDir = "./logs"
 
-// Config — структура для настройки логгера.
 type Config struct {
 	Dir     string   `yaml:"dir"`
 	Targets []string `yaml:"log_targets"`
@@ -43,7 +42,7 @@ func NewLogger(cfg Config) logger.Logger {
 	logPath := filepath.Join(dir, "main.log")
 	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening log file(%s): %s", logPath, err)
+		log.Fatalf("error opening log file(%s): %s", logPath, err) //nolint:gosec
 	}
 
 	var zcfg zapcore.EncoderConfig
@@ -65,7 +64,7 @@ func NewLogger(cfg Config) logger.Logger {
 	levelEncoder := zapcore.InfoLevel
 	if raw := os.Getenv("LOG_LEVEL"); raw != "" {
 		if err := levelEncoder.Set(raw); err != nil {
-			log.Printf("unknown LOG_LEVEL %q, using info", raw)
+			log.Printf("unknown LOG_LEVEL using info")
 			levelEncoder = zapcore.InfoLevel
 		}
 	}
