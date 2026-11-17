@@ -3,6 +3,7 @@ package rest
 import (
 	"github.com/alexey-dobry/medical-service/internal/pkg/model"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/server/rest/middleware"
+	"github.com/gofiber/fiber/v2"
 )
 
 // Fiber вызывает обработчики в порядке регистрации, поэтому middleware
@@ -19,4 +20,8 @@ func (s *RESTServer) initRoutes() {
 	s.fiberApp.Delete("/users/doctors/:doctor_id", auth, adminOnly, s.handleDeleteDoctor())
 	s.fiberApp.Get("/users/doctors/search", auth, s.handleSearchDoctors())
 	s.fiberApp.Get("/users/doctors/:doctor_id/details", auth, s.handleGetDoctorDetails())
+	s.fiberApp.Get("/healthz", func(ctx *fiber.Ctx) error {
+		return ctx.JSON(fiber.Map{"status": "ok"})
+	})
+	s.fiberApp.Get("/readyz", s.handleReadinessCheck())
 }

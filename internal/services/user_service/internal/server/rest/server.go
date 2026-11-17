@@ -3,6 +3,7 @@ package rest
 import (
 	"net"
 
+	"github.com/alexey-dobry/medical-service/internal/pkg/health"
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/client"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/server/rest/middleware"
@@ -22,6 +23,8 @@ type RESTServer struct {
 	logger logger.Logger
 	store  store.Store
 
+	healthChecker *health.Checker
+
 	secureCookies bool
 }
 
@@ -31,6 +34,7 @@ func New(
 	grpcClient client.Client,
 	registration *service.Registration,
 	tokenValidator middleware.TokenValidator,
+	health *health.Checker,
 	cfg Config,
 ) *RESTServer {
 	fiberApp := fiber.New(fiber.Config{
@@ -47,6 +51,7 @@ func New(
 		tokenValidator:   tokenValidator,
 		logger:           logger.WithFields("layer", "rest server"),
 		store:            store,
+		healthChecker:    health,
 		secureCookies:    !cfg.InsecureCookies,
 	}
 
