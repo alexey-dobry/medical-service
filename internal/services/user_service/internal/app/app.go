@@ -156,6 +156,9 @@ func (a *app) Run(ctx context.Context) {
 
 	wg.Wait()
 
+	a.health.SetReady(false)
+	time.Sleep(shutdownDelay)
+
 	if err := a.client.Close(); err != nil {
 		a.logger.Warnf("auth client closing ended with error: %s", err)
 	}
