@@ -4,6 +4,8 @@
 #   ADMIN_EMAIL, ADMIN_PASSWORD        - необязательный bootstrap-администратор
 # Переменные окружения переопределяют значения ниже.
 
+shutdown_timeout: 8s
+
 logger:
   dir: ./logs
   log_targets: []

@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"net"
 
 	"github.com/alexey-dobry/medical-service/internal/pkg/health"
@@ -54,4 +55,8 @@ func New(
 
 func (s *RESTServer) Listener(listener net.Listener) error {
 	return s.fiberApp.Listener(listener)
+}
+
+func (s *RESTServer) Shutdown(ctx context.Context) error {
+	return s.fiberApp.ShutdownWithContext(ctx)
 }

@@ -2,11 +2,11 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -24,10 +24,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-const shutdownDelay = time.Second * 5
-
 type App interface {
-	Run(context.Context)
+	Run(context.Context) error
 }
 
 type app struct {
@@ -40,7 +38,8 @@ type app struct {
 	redis    *redis.Redis
 	health   *health.Checker
 
-	logger logger.Logger
+	logger          logger.Logger
+	shutdownTimeout time.Duration
 }
 
 func New(cfg config.Config) App {
@@ -58,6 +57,7 @@ func New(cfg config.Config) App {
 
 	a.GRPCServerAddress = fmt.Sprintf(":%d", cfg.GRPC.Port)
 	a.RESTServerAddress = fmt.Sprintf(":%d", cfg.REST.Port)
+	a.shutdownTimeout = cfg.ShutdownTimeout
 
 	pgCfg := cfg.CredentialsRepository
 	a.postgres, err = postgres.New(pgCfg.URL,
@@ -104,7 +104,7 @@ func New(cfg config.Config) App {
 	return &a
 }
 
-func (a *app) Run(ctx context.Context) {
+func (a *app) Run(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -121,65 +121,78 @@ func (a *app) Run(ctx context.Context) {
 		a.logger.Fatal(err)
 	}
 
-	var wg sync.WaitGroup
+	serveErr := make(chan error, 2)
 
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
-
 		a.logger.Infof("Starting gRPC server at address %s...", a.GRPCServerAddress)
 		if err := a.GRPCServer.Serve(grpcListener); err != nil {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				a.logger.Errorf("Grpc server error: %s", err)
-				cancel()
-			}
+			serveErr <- fmt.Errorf("gRPC server: %w", err)
 		}
 	}()
 
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
-
 		a.logger.Infof("Starting REST server at address %s...", a.RESTServerAddress)
 		if err := a.RESTServer.Listener(restListener); err != nil {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				a.logger.Errorf("Rest server error: %s", err)
-				cancel()
-			}
+			serveErr <- fmt.Errorf("REST server: %w", err)
 		}
 	}()
+
 	a.logger.Info("App is running...")
 
+	var runErr error
 	select {
-	case <-quit:
-		a.logger.Info("shutdown signal received")
 	case <-ctx.Done():
-		a.logger.Info("context canceled")
+		a.logger.Info("shutdown signal received")
+	case runErr = <-serveErr:
+		a.logger.Errorf("server failed, shutting down: %s", runErr)
 	}
 
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), a.shutdownTimeout)
+	defer cancel()
+
+	return errors.Join(runErr, a.shutdown(shutdownCtx))
+}
+
+func (a *app) shutdown(ctx context.Context) error {
 	a.logger.Info("stopping all services")
 
-	cancel()
-	if err := grpcListener.Close(); err != nil {
-		a.logger.Warnf("gRPC listener closing ended with error: %s", err)
+	restDone := make(chan error, 1)
+	go func() { restDone <- a.RESTServer.Shutdown(ctx) }()
+
+	grpcErr := stopGRPC(ctx, a.GRPCServer)
+
+	var errs []error
+	if err := <-restDone; err != nil {
+		errs = append(errs, fmt.Errorf("REST shutdown: %w", err))
+	}
+	if grpcErr != nil {
+		errs = append(errs, fmt.Errorf("gRPC shutdown: %w", grpcErr))
 	}
 
-	if err := restListener.Close(); err != nil {
-		a.logger.Warnf("REST listener closing ended with error: %s", err)
-	}
-
-	wg.Wait()
-
-	a.health.SetReady(false)
-	time.Sleep(shutdownDelay)
 	a.postgres.Close()
 	a.redis.Close()
 
+	if err := errors.Join(errs...); err != nil {
+		a.logger.Warnf("app stopped with errors: %s", err)
+		return err
+	}
+
 	a.logger.Info("app was gracefully shutdown")
+	return nil
+}
+
+func stopGRPC(ctx context.Context, srv *grpc.Server) error {
+	done := make(chan struct{})
+	go func() {
+		srv.GracefulStop()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		go srv.Stop()
+		return ctx.Err()
+	}
 }

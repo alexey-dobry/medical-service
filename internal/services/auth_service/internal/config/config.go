@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/alexey-dobry/medical-service/internal/pkg/jwt"
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger/zap"
@@ -15,8 +16,6 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
-// AdminConfig — данные bootstrap-администратора. Берутся только из
-// окружения, чтобы пароль не попадал в конфиг.
 type AdminConfig struct {
 	Email    string `yaml:"-" env:"ADMIN_EMAIL" validate:"omitempty,email"`
 	Password string `yaml:"-" env:"ADMIN_PASSWORD" validate:"required_with=Email"`
@@ -30,6 +29,7 @@ type Config struct {
 	BlacklistRepository   blacklist.Config   `yaml:"redis"`
 	JWT                   jwt.Config         `yaml:"jwt"`
 	Admin                 AdminConfig        `yaml:"-"`
+	ShutdownTimeout       time.Duration      `yaml:"shutdown_timeout" env-default:"8s"`
 }
 
 func MustLoad() Config {
