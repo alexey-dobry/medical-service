@@ -59,22 +59,12 @@ func New(cfg config.Config) App {
 	a.RESTServerAddress = fmt.Sprintf(":%d", cfg.REST.Port)
 	a.shutdownTimeout = cfg.ShutdownTimeout
 
-	pgCfg := cfg.CredentialsRepository
-	a.postgres, err = postgres.New(pgCfg.URL,
-		postgres.MaxPoolSize(pgCfg.MaxPoolSize),
-		postgres.ConnAttempts(pgCfg.ConnAttempts),
-		postgres.ConnTimeout(pgCfg.ConnTimeout),
-	)
+	a.postgres, err = connectToPostgres(cfg.CredentialsRepository, a.logger)
 	if err != nil {
 		a.logger.Fatalf("Failed to connect to postgres: %s", err)
 	}
 
-	rdCfg := cfg.BlacklistRepository
-	a.redis, err = redis.New(rdCfg.URL,
-		redis.MaxCons(rdCfg.MaxCons),
-		redis.ConnAttempts(rdCfg.ConnAttempts),
-		redis.ConnTimeout(rdCfg.ConnTimeout),
-	)
+	a.redis, err = connectToRedis(cfg.BlacklistRepository, a.logger)
 	if err != nil {
 		a.logger.Fatalf("Failed to connect to redis: %s", err)
 	}
@@ -151,48 +141,4 @@ func (a *app) Run(ctx context.Context) error {
 	defer cancel()
 
 	return errors.Join(runErr, a.shutdown(shutdownCtx))
-}
-
-func (a *app) shutdown(ctx context.Context) error {
-	a.logger.Info("stopping all services")
-
-	restDone := make(chan error, 1)
-	go func() { restDone <- a.RESTServer.Shutdown(ctx) }()
-
-	grpcErr := stopGRPC(ctx, a.GRPCServer)
-
-	var errs []error
-	if err := <-restDone; err != nil {
-		errs = append(errs, fmt.Errorf("REST shutdown: %w", err))
-	}
-	if grpcErr != nil {
-		errs = append(errs, fmt.Errorf("gRPC shutdown: %w", grpcErr))
-	}
-
-	a.postgres.Close()
-	a.redis.Close()
-
-	if err := errors.Join(errs...); err != nil {
-		a.logger.Warnf("app stopped with errors: %s", err)
-		return err
-	}
-
-	a.logger.Info("app was gracefully shutdown")
-	return nil
-}
-
-func stopGRPC(ctx context.Context, srv *grpc.Server) error {
-	done := make(chan struct{})
-	go func() {
-		srv.GracefulStop()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		return nil
-	case <-ctx.Done():
-		go srv.Stop()
-		return ctx.Err()
-	}
 }
