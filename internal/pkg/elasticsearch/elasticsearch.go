@@ -175,7 +175,7 @@ func CheckResponse(res *esapi.Response) error {
 	var body struct {
 		Error json.RawMessage `json:"error"`
 	}
-	raw, _ := io.ReadAll(io.LimitReader(res.Body, 64<<10)) //nolint:errcheck // a partial body still gives the status code
+	raw, _ := io.ReadAll(io.LimitReader(res.Body, 64<<10))
 	if json.Unmarshal(raw, &body) == nil && len(body.Error) > 0 {
 		var detailed struct {
 			Type   string `json:"type"`
