@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger/zap"
 	"github.com/alexey-dobry/medical-service/internal/pkg/validator"
@@ -20,7 +21,8 @@ type Config struct {
 	Store  store.Config  `yaml:"store"`
 	Client client.Config `yaml:"client"`
 
-	Compensation service.RetryPolicy `yaml:"compensation"`
+	Compensation    service.RetryPolicy `yaml:"compensation"`
+	ShutdownTimeout time.Duration       `yaml:"shutdown_timeout" env-default:"8s"`
 }
 
 func MustLoad() Config {

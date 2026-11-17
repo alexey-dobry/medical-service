@@ -3,6 +3,8 @@
 #   MINIO_ACCESS_KEY, MINIO_SECRET_KEY - учётные данные объектного хранилища
 # Переменные окружения переопределяют значения ниже.
 
+shutdown_timeout: 8s
+
 logger:
   dir: ./logs
   log_targets: []

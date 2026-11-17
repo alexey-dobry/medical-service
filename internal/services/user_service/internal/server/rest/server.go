@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"net"
 
 	"github.com/alexey-dobry/medical-service/internal/pkg/health"
@@ -64,7 +65,6 @@ func (s *RESTServer) Listener(listener net.Listener) error {
 	return s.fiberApp.Listener(listener)
 }
 
-// setAuthCookies выставляет те же куки, что auth_service отдаёт при логине.
 func (s *RESTServer) setAuthCookies(c *fiber.Ctx, accessToken, refreshToken string) {
 	c.Cookie(&fiber.Cookie{
 		Name:     "refreshToken",
@@ -83,4 +83,8 @@ func (s *RESTServer) setAuthCookies(c *fiber.Ctx, accessToken, refreshToken stri
 		SameSite: "Strict",
 		Path:     "/",
 	})
+}
+
+func (s *RESTServer) Shutdown(ctx context.Context) error {
+	return s.fiberApp.ShutdownWithContext(ctx)
 }
