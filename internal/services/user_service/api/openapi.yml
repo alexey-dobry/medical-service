@@ -1,0 +1,631 @@
+openapi: 3.0.3
+
+info:
+  title: medical-service user API
+  version: 0.1.0
+  description: |
+    Patient registration, profiles and doctor search. Doctor management
+    is available to administrators only.
+
+    Every request except registration needs the `accessToken` cookie set
+    by `POST /auth/login` of the auth service. The token is checked by the
+    auth service on every request, so a token revoked by logout is
+    rejected here too.
+
+    Validation errors come as JSON `{"error": "..."}`. Some failures that
+    are passed through from the auth service come as plain status text.
+
+servers:
+  - url: http://localhost
+    description: Local stack, through Traefik
+
+tags:
+  - name: registration
+    description: Patient sign-up
+  - name: profile
+    description: The signed-in user's own profile
+  - name: doctors
+    description: Doctor search, available to every signed-in user
+  - name: admin
+    description: Doctor management, `ADMIN` role only
+
+# Applies to every operation that does not override it.
+security:
+  - accessCookie: []
+
+paths:
+  /users/register:
+    post:
+      tags: [registration]
+      operationId: registerPatient
+      summary: Register a patient
+      description: |
+        Creates the account in the auth service and the profile here. On
+        success the patient is logged in right away: the token cookies are
+        set in the response.
+
+        Send plain JSON, or `multipart/form-data` with the same JSON in the
+        `data` field and an optional profile photo in `photo`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientRegistration'
+          multipart/form-data:
+            schema:
+              type: object
+              required: [data]
+              properties:
+                data:
+                  $ref: '#/components/schemas/PatientRegistration'
+                photo:
+                  $ref: '#/components/schemas/Photo'
+            encoding:
+              data:
+                contentType: application/json
+              photo:
+                contentType: image/png, image/jpeg, image/webp
+      responses:
+        '201':
+          description: Patient registered and logged in.
+          headers:
+            Set-Cookie:
+              description: |
+                `accessToken` (path `/`) and `refreshToken` (path `/auth`),
+                the same cookies as after login.
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/AuthUnavailable'
+
+  /users/profile/patient:
+    get:
+      tags: [profile]
+      operationId: getPatientProfile
+      summary: Get the profile of the signed-in patient
+      responses:
+        '200':
+          description: The profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PatientProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /users/profile/doctor:
+    get:
+      tags: [profile]
+      operationId: getDoctorProfile
+      summary: Get the profile of the signed-in doctor
+      responses:
+        '200':
+          description: The profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /users/profile:
+    patch:
+      tags: [profile]
+      operationId: updateProfile
+      summary: Update fields of the signed-in user's profile
+      description: |
+        Only the listed fields can be changed. Any other field, email
+        included, is rejected with 400. An empty object changes nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdate'
+            example:
+              phone: '+79990000003'
+      responses:
+        '200':
+          description: Profile updated.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /users/doctors/search:
+    get:
+      tags: [doctors]
+      operationId: searchDoctors
+      summary: Search doctors
+      description: |
+        All given filters must match (AND). Name, specialty and services
+        are matched fuzzily, `id` and `sex` exactly. Without filters all
+        doctors are returned. No match is not an error: the list is empty.
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: first_name
+          in: query
+          schema:
+            type: string
+        - name: middle_name
+          in: query
+          schema:
+            type: string
+        - name: last_name
+          in: query
+          schema:
+            type: string
+        - name: sex
+          in: query
+          schema:
+            type: string
+        - name: specialty
+          in: query
+          schema:
+            type: string
+          example: cardiologist
+        - name: services
+          in: query
+          description: Comma-separated list, every service must match.
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+          example: [consultation, ecg]
+      responses:
+        '200':
+          description: Matching doctors, possibly none.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorSearchResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /users/doctors/{doctor_id}/details:
+    get:
+      tags: [doctors]
+      operationId: getDoctorDetails
+      summary: Get a doctor's card
+      parameters:
+        - $ref: '#/components/parameters/DoctorID'
+      responses:
+        '200':
+          description: The doctor.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [doctor]
+                properties:
+                  doctor:
+                    $ref: '#/components/schemas/DoctorDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /users/doctors:
+    post:
+      tags: [admin]
+      operationId: createDoctor
+      summary: Create a doctor
+      description: |
+        Creates the doctor's account in the auth service (role `DOCTOR`, so
+        the doctor can log in), the profile with photo and the search
+        entry. If a later step fails, everything created so far is removed.
+      x-required-role: ADMIN
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [data, photo]
+              properties:
+                data:
+                  $ref: '#/components/schemas/DoctorCreateRequest'
+                photo:
+                  $ref: '#/components/schemas/Photo'
+            encoding:
+              data:
+                contentType: application/json
+              photo:
+                contentType: image/png, image/jpeg, image/webp
+      responses:
+        '201':
+          description: Doctor created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [uuid]
+                properties:
+                  uuid:
+                    type: string
+                    format: uuid
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/AuthUnavailable'
+
+  /users/doctors/{doctor_id}:
+    delete:
+      tags: [admin]
+      operationId: deleteDoctor
+      summary: Delete a doctor
+      description: |
+        Removes the credentials first, so the doctor cannot log in even if
+        a later cleanup step fails. Every step is idempotent: a failed
+        delete can be retried.
+      x-required-role: ADMIN
+      parameters:
+        - $ref: '#/components/parameters/DoctorID'
+      responses:
+        '204':
+          description: Doctor deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/AuthUnavailable'
+
+components:
+  securitySchemes:
+    accessCookie:
+      type: apiKey
+      in: cookie
+      name: accessToken
+      description: Access JWT from `POST /auth/login` of the auth service.
+
+  parameters:
+    DoctorID:
+      name: doctor_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+      example:
+        error: birth_date must be in YYYY-MM-DD format
+
+    Phone:
+      type: string
+      description: E.164, a plus and up to 15 digits.
+      pattern: '^\+[1-9][0-9]{1,14}$'
+      example: '+79990000002'
+
+    Photo:
+      type: string
+      format: binary
+      description: An image (`image/*`) of up to 5 MiB.
+
+    PatientRegistration:
+      type: object
+      required: [name, surname, patronymic, email, phone_number, sex, password, birth_date]
+      properties:
+        name:
+          type: string
+          example: Ivan
+        surname:
+          type: string
+          example: Ivanov
+        patronymic:
+          type: string
+          example: Ivanovich
+        email:
+          type: string
+          format: email
+          example: ivan@example.com
+        phone_number:
+          $ref: '#/components/schemas/Phone'
+        sex:
+          type: string
+          example: M
+        password:
+          type: string
+          format: password
+          minLength: 8
+          writeOnly: true
+        birth_date:
+          type: string
+          format: date
+          example: '1990-01-02'
+
+    PatientProfile:
+      type: object
+      required: [name, surname, patronymic, email, phone_number, sex, birth_date, profile_picture_url]
+      properties:
+        name:
+          type: string
+        surname:
+          type: string
+        patronymic:
+          type: string
+        email:
+          type: string
+          format: email
+        phone_number:
+          $ref: '#/components/schemas/Phone'
+        sex:
+          type: string
+        birth_date:
+          type: string
+          format: date
+        profile_picture_url:
+          $ref: '#/components/schemas/PhotoURL'
+
+    DoctorProfile:
+      type: object
+      required: [name, surname, patronymic, email, phone_number, sex, specialty, profile_picture_url]
+      properties:
+        name:
+          type: string
+        surname:
+          type: string
+        patronymic:
+          type: string
+        email:
+          type: string
+          format: email
+        phone_number:
+          $ref: '#/components/schemas/Phone'
+        sex:
+          type: string
+        specialty:
+          type: string
+        profile_picture_url:
+          $ref: '#/components/schemas/PhotoURL'
+
+    PhotoURL:
+      type: string
+      format: uri
+      nullable: true
+      description: |
+        Presigned link to the photo in object storage, valid for one hour.
+        `null` when there is no photo.
+
+    ProfileUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        first_name:
+          type: string
+        middle_name:
+          type: string
+        last_name:
+          type: string
+        phone:
+          $ref: '#/components/schemas/Phone'
+        sex:
+          type: string
+
+    DoctorSearchResponse:
+      type: object
+      required: [doctors]
+      properties:
+        doctors:
+          type: array
+          items:
+            $ref: '#/components/schemas/DoctorSummary'
+
+    DoctorSummary:
+      type: object
+      required: [uuid, name, surname, patronymic, specialty, work_experience, photo]
+      properties:
+        uuid:
+          type: string
+          format: uuid
+        name:
+          type: string
+        surname:
+          type: string
+        patronymic:
+          type: string
+        specialty:
+          type: string
+        work_experience:
+          type: string
+          example: 12 years
+        photo:
+          type: string
+          description: Presigned photo link, empty string when there is no photo.
+
+    DoctorDetails:
+      type: object
+      required: [name, surname, patronymic, specialty, work_experience, description, services, photo]
+      properties:
+        name:
+          type: string
+        surname:
+          type: string
+        patronymic:
+          type: string
+        specialty:
+          type: string
+        work_experience:
+          type: string
+          example: 12 years
+        description:
+          type: string
+        services:
+          type: array
+          items:
+            type: string
+        photo:
+          $ref: '#/components/schemas/PhotoURL'
+
+    DoctorCreateRequest:
+      type: object
+      required:
+        - first_name
+        - middle_name
+        - last_name
+        - phone
+        - email
+        - password
+        - sex
+        - birth_date
+        - specialty
+        - work_experience
+        - description
+        - services
+      properties:
+        first_name:
+          type: string
+          example: Anna
+        middle_name:
+          type: string
+          example: Petrovna
+        last_name:
+          type: string
+          example: Sidorova
+        phone:
+          $ref: '#/components/schemas/Phone'
+        email:
+          type: string
+          format: email
+          example: anna@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          writeOnly: true
+        sex:
+          type: string
+          example: F
+        birth_date:
+          type: string
+          format: date
+          example: '1985-03-04'
+        specialty:
+          type: string
+          maxLength: 15
+          example: cardiologist
+        work_experience:
+          type: string
+          description: Whole years, from 1 to 40, sent as a string.
+          pattern: '^[0-9]+$'
+          example: '12'
+        description:
+          type: string
+          maxLength: 255
+        services:
+          type: array
+          items:
+            type: string
+          example: [consultation, ecg]
+
+  responses:
+    BadRequest:
+      description: The request is malformed or a field failed validation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: No `accessToken` cookie, or the token is invalid, expired or revoked.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: invalid or expired token
+    Forbidden:
+      description: The token is valid, but the role is not `ADMIN`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: insufficient role
+    NotFound:
+      description: The profile or doctor does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: |
+        A user with this email already exists. Comes as plain text when
+        the auth service reports it and as JSON when the profile store does.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        text/plain:
+          schema:
+            type: string
+          example: Conflict
+    InternalError:
+      description: A storage or the auth service failed. Nothing is wrong with the request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+        text/plain:
+          schema:
+            type: string
+          example: Internal Server Error
+    AuthUnavailable:
+      description: The auth service did not answer in time. Retry later.
+      content:
+        text/plain:
+          schema:
+            type: string
+          example: Service Unavailable
