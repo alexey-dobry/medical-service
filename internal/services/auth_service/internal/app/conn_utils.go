@@ -1,7 +1,9 @@
 package app
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 	"github.com/alexey-dobry/medical-service/internal/pkg/postgres"
@@ -30,16 +32,26 @@ func connectToPostgres(cfg credentials.Config, logger logger.Logger) (*postgres.
 func connectToRedis(cfg blacklist.Config, logger logger.Logger) (*redis.Redis, error) {
 	logger = logger.WithFields("layer", "redis_store")
 
-	rd, err := redis.New(cfg.URL,
-		redis.MaxCons(cfg.MaxCons),
-		redis.ConnAttempts(cfg.ConnAttempts),
-		redis.ConnTimeout(cfg.ConnTimeout),
-	)
+	rd, err := redis.New(cfg.URL, redis.MaxCons(cfg.MaxCons))
 	if err != nil {
-		return nil, fmt.Errorf("failed to establish connection: %w", err)
+		return nil, fmt.Errorf("failed to create client: %w", err)
+	}
+
+	for attempt := 1; ; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.ConnTimeout)
+		err = rd.Ping(ctx)
+		cancel()
+		if err == nil {
+			break
+		}
+		if attempt == cfg.ConnAttempts {
+			rd.Close()
+			return nil, fmt.Errorf("redis not reachable after %d attempts: %w", attempt, err)
+		}
+		logger.Warnf("redis ping failed (attempt %d/%d): %s", attempt, cfg.ConnAttempts, err)
+		time.Sleep(cfg.ConnTimeout)
 	}
 
 	logger.Info("connection established")
-
 	return rd, nil
 }

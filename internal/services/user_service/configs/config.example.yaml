@@ -40,6 +40,9 @@ store:
       - http://elasticsearch:9200
     doctor_index: doctors
     max_retries: 3
+    response_timeout: 10s
+    connection_attempts: 10
+    connection_retry_timeout: 2s
 
 client:
   host: auth-service

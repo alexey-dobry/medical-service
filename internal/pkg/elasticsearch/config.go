@@ -2,7 +2,6 @@ package elasticsearch
 
 import "time"
 
-// конфиг elasticsearch встраивается в конфиг сервиса
 type ElasticsearchConfig struct {
 	Addresses       []string      `validate:"required,min=1" yaml:"addresses"`
 	Username        string        `yaml:"username" env:"ELASTIC_USERNAME"`

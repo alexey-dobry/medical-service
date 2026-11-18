@@ -33,6 +33,7 @@ test:
 test-integration:
 	cd tests && go test -tags=integration -count=1 -v ./...
 
+## lint: check for linter errors
 lint:
 	@for m in $(MODULES); do echo "==> $$m"; (cd $$m && golangci-lint run ./...) || exit 1; done
 

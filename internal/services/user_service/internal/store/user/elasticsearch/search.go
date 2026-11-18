@@ -29,12 +29,12 @@ func (r *Repository) AddDoctor(ctx context.Context, doctorData model.DoctorSearc
 		return fmt.Errorf("addDoctor: marshal document: %w", err)
 	}
 
-	res, err := r.db.Index(
+	res, err := r.db.Client.Index(
 		r.index,
 		bytes.NewReader(body),
-		r.db.Index.WithDocumentID(doctorData.ID),
-		r.db.Index.WithContext(ctx),
-		r.db.Index.WithRefresh("true"),
+		r.db.Client.Index.WithDocumentID(doctorData.ID),
+		r.db.Client.Index.WithContext(ctx),
+		r.db.Client.Index.WithRefresh("true"),
 	)
 	if err != nil {
 		return fmt.Errorf("addDoctor: index request: %w", err)
@@ -49,11 +49,11 @@ func (r *Repository) AddDoctor(ctx context.Context, doctorData model.DoctorSearc
 }
 
 func (r *Repository) DeleteDoctor(ctx context.Context, ID uuid.UUID) error {
-	res, err := r.db.Delete(
+	res, err := r.db.Client.Delete(
 		r.index,
 		ID.String(),
-		r.db.Delete.WithContext(ctx),
-		r.db.Delete.WithRefresh("true"),
+		r.db.Client.Delete.WithContext(ctx),
+		r.db.Client.Delete.WithRefresh("true"),
 	)
 	if err != nil {
 		return fmt.Errorf("deleteDoctor: delete request: %w", err)
@@ -79,10 +79,10 @@ func (r *Repository) SearchDoctor(ctx context.Context, searchParams model.Doctor
 		return nil, fmt.Errorf("searchDoctor: marshal query: %w", err)
 	}
 
-	res, err := r.db.Search(
-		r.db.Search.WithIndex(r.index),
-		r.db.Search.WithBody(bytes.NewReader(body)),
-		r.db.Search.WithContext(ctx),
+	res, err := r.db.Client.Search(
+		r.db.Client.Search.WithIndex(r.index),
+		r.db.Client.Search.WithBody(bytes.NewReader(body)),
+		r.db.Client.Search.WithContext(ctx),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("searchDoctor: search request: %w", err)

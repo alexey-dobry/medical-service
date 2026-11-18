@@ -8,13 +8,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/alexey-dobry/medical-service/internal/pkg/elasticsearch"
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 	"github.com/alexey-dobry/medical-service/internal/pkg/postgres"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/domain/model"
-	el "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store/user/elasticsearch"
 	mn "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store/user/minio"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store/user/pg"
-	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -90,21 +89,16 @@ func connectToMinio(cfg mn.Config, logger logger.Logger) (*minio.Client, *minio.
 	return db, presigner, nil
 }
 
-func connectToElasticsearch(cfg el.Config, logger logger.Logger) (*elasticsearch.Client, error) {
+func connectToElasticsearch(cfg elasticsearch.ElasticsearchConfig, doctorIndex string, logger logger.Logger) (*elasticsearch.Elasticsearch, error) {
 	logger = logger.WithFields("layer", "elasticsearch_store")
 
-	maxRetries := cfg.MaxRetries
-	esCfg := elasticsearch.Config{
-		Addresses:  cfg.Addresses,
-		Username:   cfg.Username,
-		Password:   cfg.Password,
-		MaxRetries: maxRetries,
-		Transport: &http.Transport{
-			ResponseHeaderTimeout: 10 * time.Second,
-		},
-	}
-
-	client, err := elasticsearch.NewClient(esCfg)
+	client, err := elasticsearch.New(
+		cfg.Addresses,
+		elasticsearch.Credentials(cfg.Username, cfg.Password),
+		elasticsearch.MaxRetries(cfg.MaxRetries),
+		elasticsearch.ResponseTimeout(cfg.ConnTimeout),
+		elasticsearch.MaxRetries(cfg.MaxRetries),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client: %w", err)
 	}
@@ -112,17 +106,12 @@ func connectToElasticsearch(cfg el.Config, logger logger.Logger) (*elasticsearch
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	res, err := client.Ping(client.Ping.WithContext(ctx))
+	err = client.Ping(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ping: %w", err)
 	}
-	defer res.Body.Close()
 
-	if res.IsError() {
-		return nil, fmt.Errorf("ping error [%s]", res.Status())
-	}
-
-	err = initDoctorsIndex(client, cfg.DoctorIndex)
+	err = initDoctorsIndex(client, doctorIndex)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init database: %w", err)
 	}
@@ -132,12 +121,12 @@ func connectToElasticsearch(cfg el.Config, logger logger.Logger) (*elasticsearch
 	return client, nil
 }
 
-func initDoctorsIndex(client *elasticsearch.Client, index string) error {
+func initDoctorsIndex(elastic *elasticsearch.Elasticsearch, index string) error {
 	ctx := context.Background()
 
-	existsRes, err := client.Indices.Exists(
+	existsRes, err := elastic.Client.Indices.Exists(
 		[]string{index},
-		client.Indices.Exists.WithContext(ctx),
+		elastic.Client.Indices.Exists.WithContext(ctx),
 	)
 	if err != nil {
 		return fmt.Errorf("initDoctorsIndex: check existence: %w", err)
@@ -157,10 +146,10 @@ func initDoctorsIndex(client *elasticsearch.Client, index string) error {
 		return fmt.Errorf("initDoctorsIndex: marshal mapping: %w", err)
 	}
 
-	createRes, err := client.Indices.Create(
+	createRes, err := elastic.Client.Indices.Create(
 		index,
-		client.Indices.Create.WithBody(bytes.NewReader(mappingBody)),
-		client.Indices.Create.WithContext(ctx),
+		elastic.Client.Indices.Create.WithBody(bytes.NewReader(mappingBody)),
+		elastic.Client.Indices.Create.WithContext(ctx),
 	)
 	if err != nil {
 		return fmt.Errorf("initDoctorsIndex: create index: %w", err)

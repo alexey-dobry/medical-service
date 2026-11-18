@@ -40,8 +40,6 @@ func New(url string, opts ...Option) (*Redis, error) {
 		return nil, fmt.Errorf("redis - New() - failed to parse conn url: %w", err)
 	}
 
-	clientConfig.DialerRetryTimeout = rd.connTimeout
-	clientConfig.DialerRetries = rd.connAttempts
 	clientConfig.MaxActiveConns = rd.maxCons
 
 	rd.Client = redis.NewClient(clientConfig)

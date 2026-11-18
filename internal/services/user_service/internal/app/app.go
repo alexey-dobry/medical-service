@@ -47,20 +47,12 @@ func New(cfg config.Config) App {
 	var a app
 	var err error
 
-	a.health = health.New(2*time.Second,
-		health.Check{Name: "postgres", Critical: true, Fn: a.postgres.Ping},
-		health.Check{Name: "redis", Critical: true, Fn: a.redis.Ping},
-		health.Check{Name: "elasticsearch", Critical: true, Fn: a.elasticsearch.Ping},
-	)
-
-	a.health.SetReady(true)
-
 	a.logger = zap.NewLogger(cfg.Logger).WithFields("layer", "app")
 
 	a.RESTServerAddress = fmt.Sprintf(":%d", cfg.REST.Port)
 	a.shutdownTimeout = cfg.ShutdownTimeout
 
-	pgDB, err := connectToPostgres(cfg.Store.Postgres, a.logger)
+	a.postgres, err = connectToPostgres(cfg.Store.Postgres, a.logger)
 	if err != nil {
 		a.logger.Fatalf("Failed to connect to postgres: %s", err)
 	}
@@ -70,12 +62,19 @@ func New(cfg config.Config) App {
 		a.logger.Fatalf("Failed to connect to redis: %s", err)
 	}
 
-	esDB, err := connectToElasticsearch(cfg.Store.Elasticsearch, a.logger)
+	a.elasticsearch, err = connectToElasticsearch(cfg.Store.Elasticsearch.ElasticsearchConfig, cfg.Store.Elasticsearch.DoctorIndex, a.logger)
 	if err != nil {
 		a.logger.Fatalf("Failed to connect to elasticsearch: %s", err)
 	}
 
-	store, err := user.New(cfg.Store, a.logger, pgDB, mnDB, mnPresigner, esDB)
+	a.health = health.New(2*time.Second,
+		health.Check{Name: "postgres", Critical: true, Fn: a.postgres.Ping},
+		health.Check{Name: "elasticsearch", Critical: true, Fn: a.elasticsearch.Ping},
+	)
+
+	a.health.SetReady(true)
+
+	store, err := user.New(cfg.Store, a.logger, a.postgres, mnDB, mnPresigner, a.elasticsearch)
 	if err != nil {
 		a.logger.Fatalf("Failed to create store instance: %s", err)
 	}

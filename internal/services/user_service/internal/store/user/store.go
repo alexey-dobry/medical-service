@@ -1,6 +1,7 @@
 package user
 
 import (
+	"github.com/alexey-dobry/medical-service/internal/pkg/elasticsearch"
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 	"github.com/alexey-dobry/medical-service/internal/pkg/postgres"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store"
@@ -8,7 +9,6 @@ import (
 	mn "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store/user/minio"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store/user/pg/meta"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store/user/pg/user"
-	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/minio/minio-go/v7"
 )
 
@@ -25,7 +25,7 @@ func New(
 	pgDB *postgres.Postgres,
 	mnDB *minio.Client,
 	mnPresigner *minio.Client,
-	elDB *elasticsearch.Client,
+	elDB *elasticsearch.Elasticsearch,
 ) (store.Store, error) {
 	logger = logger.WithFields("layer", "store")
 

@@ -1,20 +1,18 @@
 package elasticsearch
 
 import (
-	"context"
-
+	"github.com/alexey-dobry/medical-service/internal/pkg/elasticsearch"
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/store"
-	"github.com/elastic/go-elasticsearch/v8"
 )
 
 type Repository struct {
-	db     *elasticsearch.Client
+	db     *elasticsearch.Elasticsearch
 	index  string
 	logger logger.Logger
 }
 
-func New(db *elasticsearch.Client, logger logger.Logger, index string) store.SearchRepository {
+func New(db *elasticsearch.Elasticsearch, logger logger.Logger, index string) store.SearchRepository {
 	return &Repository{
 		db:     db,
 		index:  index,
@@ -23,5 +21,5 @@ func New(db *elasticsearch.Client, logger logger.Logger, index string) store.Sea
 }
 
 func (r *Repository) Close() error {
-	return r.db.Close(context.Background())
+	return r.db.Close()
 }

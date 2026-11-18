@@ -46,13 +46,6 @@ func New(cfg config.Config) App {
 	var a app
 	var err error
 
-	a.health = health.New(2*time.Second,
-		health.Check{Name: "postgres", Critical: true, Fn: a.postgres.Ping},
-		health.Check{Name: "redis", Critical: true, Fn: a.redis.Ping},
-	)
-
-	a.health.SetReady(true)
-
 	a.logger = zap.NewLogger(cfg.Logger).WithFields("layer", "app")
 
 	a.GRPCServerAddress = fmt.Sprintf(":%d", cfg.GRPC.Port)
@@ -68,6 +61,13 @@ func New(cfg config.Config) App {
 	if err != nil {
 		a.logger.Fatalf("Failed to connect to redis: %s", err)
 	}
+
+	a.health = health.New(2*time.Second,
+		health.Check{Name: "postgres", Critical: true, Fn: a.postgres.Ping},
+		health.Check{Name: "redis", Critical: true, Fn: a.redis.Ping},
+	)
+
+	a.health.SetReady(true)
 
 	credentialsRepo := credentials.NewCredentialsRepository(a.postgres)
 	blacklistRepo := blacklist.NewBlacklistRepository(a.redis)
