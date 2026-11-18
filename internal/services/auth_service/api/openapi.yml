@@ -1,0 +1,168 @@
+openapi: 3.0.3
+
+info:
+  title: medical-service auth API
+  version: 0.1.0
+  description: |
+    Login, refresh token and logout
+    Tokens are never returned in the response body. They are set as
+    HttpOnly cookies: `accessToken` (path `/`) and `refreshToken` (path `/auth`).
+
+servers:
+  - url: '{scheme}://{host}'
+    variables:
+      scheme:
+        enum: [http, https]
+        default: http
+      host:
+        default: localhost
+
+tags:
+  - name: auth
+    description: Sessions and tokens
+
+paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Log in with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: ivan@example.com
+              password: patient-password
+      responses:
+        '200':
+          description: Logged in. A new access and refresh tokens given.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SetAuthCookies'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      operationId: refresh
+      summary: Exchange a refresh token for a new token pair
+      description: |
+        Uses only the refresh token, so it works when the access token has
+        already expired. The refresh token is rotated: the one that was
+        sent can never be used again. If a still valid access token is
+        sent too, it is revoked.
+      security:
+        - refreshCookie: []
+      responses:
+        '200':
+          description: New access and refresh token are set as cookies.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SetAuthCookies'
+        '401':
+          description: |
+            The refresh token is missing, expired, has a wrong signature,
+            is not a refresh token, was already used or belongs to a
+            session that was logged out.
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: Unauthorized
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Revoke the current session
+      description: |
+        Revokes every valid token the client sends: the access token is
+        blacklisted and the refresh session is closed. At least one of
+        the two cookies must hold a valid token.
+      security:
+        - accessCookie: []
+        - refreshCookie: []
+      responses:
+        '200':
+          description: Session revoked. Both cookies are cleared.
+          headers:
+            Set-Cookie:
+              description: |
+                `accessToken` and `refreshToken` with an empty value and
+                `Max-Age` in the past, so the browser deletes them.
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    accessCookie:
+      type: apiKey
+      in: cookie
+      name: accessToken
+      description: Access JWT set by login or refresh.
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: refreshToken
+      description: Refresh JWT set by login or refresh. Sent only to `/auth/*`.
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 1
+
+  headers:
+    SetAuthCookies:
+      description: |
+        Sets two HttpOnly, SameSite=Strict cookies: `accessToken`
+        (path `/`) and `refreshToken` (path `/auth`). They are marked
+        `Secure` unless the service runs with `insecure_cookies: true`.
+      schema:
+        type: string
+      example: accessToken=eyJhbGciOi...; Path=/; HttpOnly; SameSite=Strict
+
+  responses:
+    BadRequest:
+      description: The body is not valid JSON or a field is missing or malformed.
+      content:
+        text/plain:
+          schema:
+            type: string
+          example: Bad Request
+    Unauthorized:
+      description: Wrong credentials or no valid token.
+      content:
+        text/plain:
+          schema:
+            type: string
+          example: Unauthorized
+    InternalError:
+      description: Postgres or Redis failed. Nothing is wrong with the request.
+      content:
+        text/plain:
+          schema:
+            type: string
+          example: Internal Server Error
