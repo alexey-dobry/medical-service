@@ -34,8 +34,8 @@ func env(name, def string) string {
 }
 
 var (
-	authURL       = env("AUTH_URL", "http://localhost:8080")
-	userURL       = env("USER_URL", "http://localhost:8081")
+	authURL       = env("AUTH_URL", "http://localhost")
+	userURL       = env("USER_URL", "http://localhost")
 	adminEmail    = env("ADMIN_EMAIL", "admin@example.com")
 	adminPassword = env("ADMIN_PASSWORD", "admin-dev-password")
 )

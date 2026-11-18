@@ -110,8 +110,11 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       - ./internal/services/auth_service/configs/config.example.yaml:/app/configs/config.yaml:ro
-    ports:
-      - "8080:8080" # REST; gRPC 50051 остаётся внутри сети
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.auth.rule=PathPrefix(`/auth`)
+      - traefik.http.routers.auth.entrypoints=web
+      - traefik.http.services.auth.loadbalancer.server.port=8080
     depends_on:
       auth-migrate:
         condition: service_completed_successfully
@@ -134,8 +137,11 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       - ./internal/services/user_service/configs/config.example.yaml:/app/configs/config.yaml:ro
-    ports:
-      - "8081:8081"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.users.rule=PathPrefix(`/users`)
+      - traefik.http.routers.users.entrypoints=web
+      - traefik.http.services.users.loadbalancer.server.port=8081
     depends_on:
       user-migrate:
         condition: service_completed_successfully
@@ -144,7 +150,34 @@ services:
       elasticsearch:
         condition: service_healthy
       auth-service:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/readyz >/dev/null || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+  
+  traefik:
+    image: traefik:v3.6
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --ping=true
+      - --accesslog=true
+      - --log.level=INFO
+    ports:
+      - "80:80"
+      - "8088:8080"   # дашборд Traefik
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
 
 volumes:
   postgres-data:
