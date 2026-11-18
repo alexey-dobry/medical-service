@@ -12,7 +12,6 @@ import (
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger"
 	"github.com/alexey-dobry/medical-service/internal/pkg/logger/zap"
 	"github.com/alexey-dobry/medical-service/internal/pkg/postgres"
-	"github.com/alexey-dobry/medical-service/internal/pkg/redis"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/client"
 	grpcClient "github.com/alexey-dobry/medical-service/internal/services/user_service/internal/client/grpc"
 	"github.com/alexey-dobry/medical-service/internal/services/user_service/internal/config"
@@ -33,7 +32,6 @@ type app struct {
 
 	store         store.Store
 	postgres      *postgres.Postgres
-	redis         *redis.Redis
 	elasticsearch *els.Elasticsearch
 	client        client.Client
 
