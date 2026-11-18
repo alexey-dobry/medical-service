@@ -69,24 +69,27 @@ jobs:
           cache-dependency-path: "**/go.sum"
       
       - name: Start system
-        run: docker compose up --build -d
+        run: docker compose up --build -d --wait --wait-timeout 300
 
-      - name: Wait for system to startup
+      - name: Wait for gateway routes
         run: |
-          for i in $(seq 1 60); do
-            if curl -fs -o /dev/null http://localhost:8081/users/doctors/search; then exit 0; fi
-            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/users/doctors/search || true)
-            if [ "$code" = "401" ]; then exit 0; fi
-            sleep 5
+          for i in $(seq 1 30); do
+            auth=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost/auth/refresh || true)
+            users=$(curl -s -o /dev/null -w '%{http_code}' http://localhost/users/doctors/search || true)
+            echo "attempt $i: auth=$auth users=$users"
+            if [ "$auth" = "401" ] && [ "$users" = "401" ]; then exit 0; fi
+            sleep 2
           done
-          echo "stack did not start in time"; exit 1
+          echo "gateway routes are not ready"; exit 1
 
       - name: Run integration test
         run: make test-integration
 
       - name: Show logs on failure
         if: failure()
-        run: docker compose logs --no-color
+        run: |
+          docker compose ps -a
+          docker compose logs --no-color traefik auth-service user-service
       
       - name: Stop system
         if: always()
