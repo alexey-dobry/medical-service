@@ -149,6 +149,7 @@ GET    /users/doctors/search              авторизация                
 GET    /users/doctors/:doctor_id/details  авторизация                 user_service
 POST   /users/doctors                     ADMIN                       user_service
 DELE
+```
 
 ## Как устроено
 
