@@ -6,40 +6,7 @@
 
 ## Сервисы
 
-```mermaid
-flowchart LR
-    client([client])
-
-    subgraph auth[auth_service]
-        authrest[REST :8080]
-        authgrpc[gRPC :50051]
-    end
-
-    subgraph user[user_service]
-        userrest[REST :8081]
-    end
-
-    pgauth[(Postgres: auth)]
-    redis[(Redis)]
-    pguser[(Postgres: users)]
-    minio[(MinIO)]
-    es[(Elasticsearch)]
-
-    client --> authrest
-    client --> userrest
-    client -.-> minio
-
-    userrest -- gRPC --> authgrpc
-
-    authrest --> pgauth
-    authrest --> redis
-    authgrpc --> pgauth
-    authgrpc --> redis
-
-    userrest --> pguser
-    userrest --> minio
-    userrest --> es
-```
+![current_architecture](assets/current_arch.png)
 
 `auth_service` хранит логины и пароли, выдаёт и отзывает JWT. Секреты подписи и Redis есть только у него.
 
@@ -70,11 +37,27 @@ make down    # остановить, make down V=1 — вместе с volume'а
 
 Порты:
 
-- `8080` — auth_service
-- `8081` — user_service
 - `9000` — MinIO (на него ведут ссылки на фото), `9001` — консоль MinIO
 
 gRPC, Postgres, Redis и Elasticsearch наружу не открыты.
+
+## Тесты
+
+```bash
+make test                          # unit-тесты всех модулей
+make up && make test-integration   # полный сценарий на поднятом стеке
+```
+
+Unit-тесты написаны на testify и gomock. Покрыты:
+
+- jwt: истёкший токен, чужая подпись, `HS512` и `alg=none`, refresh вместо access;
+- логин, refresh и logout;
+- регистрация и откат при ошибках;
+- middleware авторизации.
+
+Интеграционный тест лежит в `tests/` и прогоняет сценарий из примера выше целиком.
+
+Моки генерируются через `go generate ./...` (нужен `mockgen`), gRPC-код — через `make proto`.
 
 ### Переменные окружения
 
@@ -102,70 +85,89 @@ migrate -path migrations/user -database "postgres://user_service:<pwd>@localhost
 
 ## Пример
 
-Токены лежат в httpOnly-куках. Куки не привязаны к порту, поэтому то, что выдал `:8080`, уходит и на `:8081`. Локально в конфигах стоит `insecure_cookies: true`, чтобы куки работали без HTTPS.
+
+Все запросы идут через Traefik на `http://localhost`, он раскидывает их по сервисам по префиксу пути. Токены лежат в httpOnly-куках: `accessToken` с `Path=/` уходит в оба сервиса, `refreshToken` с `Path=/auth` — только в auth_service. Локально в конфигах стоит `insecure_cookies: true`, чтобы куки работали без HTTPS.
 
 ```bash
+API=http://localhost
+
 # любая png/jpeg до 5 МБ
 printf '\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\1\0\0\0\1\x08\x06\0\0\0\x1f\x15\xc4\x89\0\0\0\rIDATx\x9cc\0\1\0\0\5\0\1\r\n-\xb4\0\0\0\0IEND\xaeB`\x82' > photo.png
 
 # админ создаёт врача
 curl -s -c admin.txt -H 'Content-Type: application/json' \
   -d '{"email":"admin@example.com","password":"admin-dev-password"}' \
-  http://localhost:8080/auth/login
+  $API/auth/login
 
-curl -s -b admin.txt http://localhost:8081/users/doctors \
+curl -s -b admin.txt $API/users/doctors \
   -F 'data={"first_name":"Anna","middle_name":"Petrovna","last_name":"Sidorova","phone":"+79990000001","email":"anna@example.com","password":"doctor-password","sex":"F","birth_date":"1985-03-04","specialty":"cardiologist","work_experience":"12","description":"Cardiologist","services":["consultation","ecg"]}' \
   -F 'photo=@photo.png;type=image/png'
 
 # регистрация пациента (фото необязательно, можно отправить обычный json)
-curl -s -c patient.txt http://localhost:8081/users/register \
+curl -s -c patient.txt $API/users/register \
   -F 'data={"name":"Ivan","surname":"Ivanov","patronymic":"Ivanovich","email":"ivan@example.com","phone_number":"+79990000002","sex":"M","password":"patient-password","birth_date":"1990-01-02"}' \
   -F 'photo=@photo.png;type=image/png'
 
 # логин
 curl -s -b patient.txt -c patient.txt -H 'Content-Type: application/json' \
   -d '{"email":"ivan@example.com","password":"patient-password"}' \
-  http://localhost:8080/auth/login
+  $API/auth/login
 
-# профиль, в profile_picture_url ссылка на фото
-curl -s -b patient.txt http://localhost:8081/users/profile/patient
+# профиль, в profile_picture_url ссылка на фото (она ведёт прямо в MinIO на :9000, мимо Traefik)
+curl -s -b patient.txt $API/users/profile/patient
 
 # поиск врачей и карточка врача
-curl -s -b patient.txt 'http://localhost:8081/users/doctors/search?specialty=cardiologist'
-curl -s -b patient.txt http://localhost:8081/users/doctors/<uuid>/details
+curl -s -b patient.txt "$API/users/doctors/search?specialty=cardiologist"
+curl -s -b patient.txt $API/users/doctors/<uuid>/details
 
 # refresh
-curl -s -b patient.txt -c patient.txt -X POST http://localhost:8080/auth/refresh
+curl -s -b patient.txt -c patient.txt -X POST $API/auth/refresh
 
 # logout, а потом проверяем, что старые токены больше не работают
 ACCESS=$(awk '$6=="accessToken"{print $7}' patient.txt)
 REFRESH=$(awk '$6=="refreshToken"{print $7}' patient.txt)
-curl -s -b patient.txt -c patient.txt -X POST http://localhost:8080/auth/logout
+curl -s -b patient.txt -c patient.txt -X POST $API/auth/logout
 
-curl -s -o /dev/null -w '%{http_code}\n' --cookie "accessToken=$ACCESS" http://localhost:8081/users/profile/patient   # 401
-curl -s -o /dev/null -w '%{http_code}\n' --cookie "refreshToken=$REFRESH" -X POST http://localhost:8080/auth/refresh # 401
+curl -s -o /dev/null -w '%{http_code}\n' --cookie "accessToken=$ACCESS" $API/users/profile/patient    # 401
+curl -s -o /dev/null -w '%{http_code}\n' --cookie "refreshToken=$REFRESH" -X POST $API/auth/refresh  # 401
 ```
 
 ### Эндпоинты
 
-```
-auth_service :8080
-  POST   /auth/login
-  POST   /auth/refresh
-  POST   /auth/logout
+Снаружи всё доступно через `http://localhost`. Колонка справа — какой сервис отвечает.
 
-user_service :8081
-  POST   /users/register
-  GET    /users/profile/patient                  авторизация
-  GET    /users/profile/doctor                   авторизация
-  PATCH  /users/profile                          авторизация
-  GET    /users/doctors/search                   авторизация  (first_name, last_name, specialty, sex, services=a,b)
-  GET    /users/doctors/:doctor_id/details       авторизация
-  POST   /users/doctors                          ADMIN
-  DELETE /users/doctors/:doctor_id               ADMIN
 ```
+POST   /auth/login                                                    auth_service
+POST   /auth/refresh                                                  auth_service
+POST   /auth/logout                                                   auth_service
+
+POST   /users/register                                                user_service
+GET    /users/profile/patient             авторизация                 user_service
+GET    /users/profile/doctor              авторизация                 user_service
+PATCH  /users/profile                     авторизация                 user_service
+GET    /users/doctors/search              авторизация                 user_service  (first_name, last_name, specialty, sex, services=a,b)
+GET    /users/doctors/:doctor_id/details  авторизация                 user_service
+POST   /users/doctors                     ADMIN                       user_service
+DELE
 
 ## Как устроено
+
+### Шлюз
+
+Снаружи открыт только Traefik на `:80`. Маршруты он берёт из labels контейнеров в `docker-compose.yaml`: `/auth/*` уходит в auth_service, `/users/*` — в user_service. Путь не обрезается, сервисы получают его целиком.
+
+Сервисы своих портов наружу не публикуют, к ним не обратиться в обход шлюза. gRPC между сервисами идёт напрямую по внутренней сети compose, Traefik в нём не участвует. Исключение — ссылки на фото: presigned-URL подписан под конкретный хост, поэтому клиент качает файл прямо из MinIO на `:9000`.
+
+Дашборд Traefik с маршрутами и их состоянием: http://localhost:8088.
+
+### Health-чеки
+
+У каждого сервиса два служебных эндпоинта, они доступны только внутри сети, через шлюз их не видно:
+
+- `/healthz` — процесс жив. Внешние зависимости не проверяет, чтобы падение базы не приводило к перезапуску сервиса.
+- `/readyz` — сервис готов принимать запросы: пингует свои зависимости (auth — Postgres и Redis, user — Postgres и Elasticsearch). Отвечает 503, пока сервис не стартовал до конца или если отвалилась критичная зависимость.
+
+По `/readyz` работают healthcheck'и в compose. От них зависят `depends_on: service_healthy`, `make up` (он ждёт через `--wait`) и Traefik, который не шлёт трафик в unhealthy-контейнер.
 
 ### Отзыв токенов
 
@@ -185,30 +187,6 @@ Refresh смотрит только на refresh-токен. Истёкший ac
 
 Откат работает на контексте без отмены (`context.WithoutCancel`): если клиент отвалился посреди запроса, откат всё равно доходит до конца.
 
-### Мелочи
-
-- На неверный пароль и на несуществующий email логин отвечает одинаково, по времени тоже: для несуществующего email всё равно считается bcrypt. Так нельзя узнать, есть ли email в базе.
-- Повторный email определяется по коду ошибки Postgres `23505`, а не по тексту сообщения.
-- Через API админа не создать, он заводится при старте из `ADMIN_EMAIL` и `ADMIN_PASSWORD`.
-
-## Тесты
-
-```bash
-make test                          # unit-тесты всех модулей
-make up && make test-integration   # полный сценарий на поднятом стеке
-```
-
-Unit-тесты написаны на testify и gomock. Покрыты:
-
-- jwt: истёкший токен, чужая подпись, `HS512` и `alg=none`, refresh вместо access;
-- логин, refresh и logout;
-- регистрация и откат при ошибках;
-- middleware авторизации.
-
-Интеграционный тест лежит в `tests/` и прогоняет сценарий из примера выше целиком.
-
-Моки генерируются через `go generate ./...` (нужен `mockgen`), gRPC-код — через `make proto`.
-
 ## Структура
 
 ```
@@ -222,6 +200,13 @@ tests/                         интеграционный тест
 
 ## TODO
 
-- медкарты и запись к врачу (ветка `wip/medical-records-appointments`)
+- сервисы медкарты и запись к врачу
 - события между сервисами через Kafka
-- TLS для gRPC (клиент уже умеет, см. `cert_file_path`)
+- перевод валидации токенов на асинхронную модель (JWKS)
+- перенос секретов в Vault
+- Добавление агрегации и визуализации метрик и логов
+- Добавление отдельных admin эндпоинтов
+
+### Целевая архитектура
+
+![goal_architecture](assets/goal_arch.png)
